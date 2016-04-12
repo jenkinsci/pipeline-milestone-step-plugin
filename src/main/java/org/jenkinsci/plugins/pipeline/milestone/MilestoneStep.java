@@ -28,6 +28,11 @@ public class MilestoneStep extends AbstractStepImpl {
      */
     private String label;
 
+    /**
+     * Optional ordinal.
+     */
+    private Integer ordinal;
+
     @DataBoundConstructor
     public MilestoneStep() {
     }
@@ -35,6 +40,11 @@ public class MilestoneStep extends AbstractStepImpl {
     @DataBoundSetter
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    @DataBoundSetter
+    public void setOrdinal(Integer ordinal) {
+        this.ordinal = ordinal;
     }
 
     @CheckForNull

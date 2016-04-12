@@ -28,4 +28,7 @@ THE SOFTWARE.
     <f:entry field="label" title="Milestone label">
         <f:textbox/>
     </f:entry>
+    <f:entry field="ordinal" title="Ordinal">
+        <f:number clazz="positive-number"/>
+    </f:entry>
 </j:jelly>

@@ -306,7 +306,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 }
             }
         }
-        // TODO: remove milestones that no longer exist (because the step or the job was deleted)
     }
 
     @SuppressWarnings("unchecked")
