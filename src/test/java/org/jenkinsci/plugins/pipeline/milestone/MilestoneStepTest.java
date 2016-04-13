@@ -122,7 +122,7 @@ public class MilestoneStepTest {
                         "milestone()\n"));
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                 story.j.assertBuildStatus(Result.FAILURE, story.j.waitForCompletion(b1));
-                story.j.assertLogContains("Milestone step found inside parallel", b1);
+                story.j.assertLogContains("Using a milestone step inside parallel is not allowed", b1);
 
                 p.setDefinition(new CpsFlowDefinition(
                         "sleep 1\n" +
@@ -135,7 +135,7 @@ public class MilestoneStepTest {
                         "milestone()\n"));
                 WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
                 story.j.assertBuildStatus(Result.FAILURE, story.j.waitForCompletion(b2));
-                story.j.assertLogContains("Milestone step found inside parallel", b2);
+                story.j.assertLogContains("Using a milestone step inside parallel is not allowed", b2);
 
                 p.setDefinition(new CpsFlowDefinition(
                         "sleep 1\n" +
