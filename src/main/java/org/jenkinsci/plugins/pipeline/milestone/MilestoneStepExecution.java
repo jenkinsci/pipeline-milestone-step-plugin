@@ -208,7 +208,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
 
         // Clean non-existing milestones
         if (r instanceof FlowExecutionOwner.Executable) {
-            Integer lastMilestoneOrdinal = getLastOrdinalInBuild(r);
+            Integer lastMilestoneOrdinal = getLastOrdinalInBuild((FlowExecutionOwner.Executable) r);
             if (lastMilestoneOrdinal == null) {
                 return;
             }
@@ -230,9 +230,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     @CheckForNull
-    private static Integer getLastOrdinalInBuild(Run<?, ?> r) {
+    private static Integer getLastOrdinalInBuild(FlowExecutionOwner.Executable r) {
         int lastMilestoneOrdinal = 0;
-        FlowExecutionOwner owner = ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner();
+        FlowExecutionOwner owner = r.asFlowExecutionOwner();
         if (owner == null) {
             return null;
         }
