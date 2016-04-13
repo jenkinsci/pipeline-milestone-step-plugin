@@ -87,6 +87,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      * Gets the next ordinal and throw {@link AbortException} the milestone lives inside a parallel step branch.
      */
     private synchronized int processOrdinal() throws AbortException {
+        // TODO: use FlowNodeSerialWalker when released
         FlowGraphWalker walker = new FlowGraphWalker();
         walker.addHead(node);
         Integer previousOrdinal = null;
