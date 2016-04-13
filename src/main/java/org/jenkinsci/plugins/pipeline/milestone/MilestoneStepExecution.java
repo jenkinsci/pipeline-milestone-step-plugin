@@ -109,9 +109,21 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 break;
             }
         }
+
+        // If step.ordinal is set then use it and check order with the previous one
+        // Otherwise use calculated ordinal (previousOrdinal + 1)
         int nextOrdinal = 0;
         if (previousOrdinal != null) {
-            nextOrdinal = previousOrdinal + 1;
+            if (step.getOrdinal() != null) {
+                nextOrdinal = step.getOrdinal();
+                if (previousOrdinal >= nextOrdinal) {
+                    throw new AbortException(String.format("Invalid ordinal %s, as the previous one was %s", nextOrdinal, previousOrdinal));
+                }
+            } else {
+                nextOrdinal = previousOrdinal + 1;
+            }
+        } else if (step.getOrdinal() != null) {
+            nextOrdinal = step.getOrdinal();
         }
         node.addAction(new OrdinalAction(nextOrdinal));
         return nextOrdinal;
@@ -125,7 +137,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-        return ((MilestoneStep.DescriptorImpl) Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
+        return ((MilestoneStep.DescriptorImpl) Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
     }
 
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
@@ -154,8 +166,8 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             // The build is passing a milestone, so it's not visible to any previous milestone
             if (milestone2.wentAway(r)) {
                 // Ordering check
-                if(milestone2.ordinal != ordinal - 1) {
-                    throw new AbortException(String.format("Unordered milestone. Found ordinal %s but %s was expected.", ordinal, milestone2.ordinal + 1));
+                if(milestone2.ordinal >= ordinal) {
+                    throw new AbortException(String.format("Unordered milestone. Found ordinal %s but %s (or bigger) was expected.", ordinal, milestone2.ordinal + 1));
                 }
                 // Cancel older builds (holding or waiting to enter)
                 cancelOldersInSight(milestone2, r);
@@ -327,11 +339,11 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static void load() {
-        Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class).load();
+        Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class).load();
     }
 
     private static void save() {
-        Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class).save();
+        Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class).save();
     }
 
     @Extension

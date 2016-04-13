@@ -77,6 +77,11 @@ public class MilestoneStep extends AbstractStepImpl {
         return label;
     }
 
+    @CheckForNull
+    public Integer getOrdinal() {
+        return ordinal;
+    }
+
     @Extension
     public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
@@ -124,4 +129,3 @@ public class MilestoneStep extends AbstractStepImpl {
     }
 
 }
-

@@ -152,4 +152,31 @@ public class MilestoneStepTest {
         });
     }
 
+    @Test
+    public void ordinals() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "milestone()\n" +
+                        "node {\n" +
+                        "  milestone ordinal: 1\n" +
+                        "}\n" +
+                        "milestone()\n" +
+                        "milestone ordinal: 5\n" +
+                        "milestone()"));
+                story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+
+                p.setDefinition(new CpsFlowDefinition(
+                        "milestone()\n" +
+                        "node {\n" +
+                        "  milestone()\n" +
+                        "}\n" +
+                        "milestone()\n" +
+                        "milestone ordinal: 2")); // Invalid ordinal
+                story.j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
+            }
+        });
+    }
+
 }
