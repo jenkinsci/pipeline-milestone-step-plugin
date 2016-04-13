@@ -1,16 +1,36 @@
+/*
+ * The MIT License
+ *
+ * Copyright (c) 2016, CloudBees, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package org.jenkinsci.plugins.pipeline.milestone;
-
 
 import static java.util.logging.Level.WARNING;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,7 +54,6 @@ import com.google.inject.Inject;
 
 import hudson.AbortException;
 import hudson.Extension;
-import hudson.XmlFile;
 import hudson.model.Executor;
 import hudson.model.InvisibleAction;
 import hudson.model.Job;
@@ -42,7 +61,6 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
-import jenkins.model.CauseOfInterruption;
 import jenkins.model.Jenkins;
 
 public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Void> {
@@ -58,6 +76,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     public Void run() throws Exception {
         if (step.getLabel() != null) {
             node.addAction(new LabelAction(step.getLabel()));
+            node.addAction(new MilestoneAction(step.getLabel()));
         }
         int ordinal = processOrdinal();
         tryToPass(run, getContext(), ordinal);
@@ -75,7 +94,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         for (FlowNode n : walker) {
 
             if (parallelDetectionEnabled <= 0 && n.getAction(ThreadNameAction.class) != null) {
-                listener.getLogger().println("Milestone step found inside parallel, it's not possible to grant ordering in this case.");
                 throw new AbortException("Using a milestone step inside parallel is not allowed");
             }
 
@@ -100,17 +118,17 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static class OrdinalAction extends InvisibleAction {
-        Integer ordinal;
-        public OrdinalAction(Integer ordinal) {
+        int ordinal;
+        public OrdinalAction(int ordinal) {
             this.ordinal = ordinal;
         }
     }
 
     private static Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-        return MilestoneStep.DescriptorImpl.milestonesByOrdinalByJob;
+        return ((MilestoneStep.DescriptorImpl) Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
     }
 
-    private static synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
+    private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
         LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
         println(context, "Trying to pass milestone " + ordinal);
         load();
@@ -255,7 +273,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 Run<?, ?> olderInSightBuild = r.getParent().getBuildByNumber(inSightNumber);
                 Executor e = olderInSightBuild.getExecutor();
                 if (e != null) {
-                    e.interrupt(Result.NOT_BUILT, new CanceledCause(r.getExternalizableId()));
+                    e.interrupt(Result.NOT_BUILT, new CancelledCause(r.getExternalizableId()));
                 } else {
                     LOGGER.log(WARNING, "could not cancel an older flow because it has no assigned executor");
                 }
@@ -283,7 +301,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             if (r != null) { // it should be always non-null at this point, but let's do a defensive check
                 job = r.getParent().getFullName();
             }
-            throw new FlowInterruptedException(Result.NOT_BUILT, new CanceledCause(job + "#" + build));
+            throw new FlowInterruptedException(Result.NOT_BUILT, new CancelledCause(job + "#" + build));
         } else {
             LOGGER.log(WARNING, "cannot cancel dead #" + build);
         }
@@ -308,37 +326,12 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static synchronized void load() {
-        if (getMilestonesByOrdinalByJob() == null) {
-            MilestoneStep.DescriptorImpl.milestonesByOrdinalByJob = new TreeMap<String, Map<Integer, Milestone>>();
-            try {
-                XmlFile configFile = getConfigFile();
-                if (configFile.exists()) {
-                    MilestoneStep.DescriptorImpl.milestonesByOrdinalByJob = (Map<String, Map<Integer, Milestone>>) configFile.read();
-                }
-            } catch (IOException x) {
-                LOGGER.log(WARNING, null, x);
-            }
-            LOGGER.log(Level.FINE, "load: {0}", getMilestonesByOrdinalByJob());
-        }
+    private static void load() {
+        Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class).load();
     }
 
-    private static synchronized void save() {
-        try {
-            getConfigFile().write(getMilestonesByOrdinalByJob());
-        } catch (IOException x) {
-            LOGGER.log(WARNING, null, x);
-        }
-        LOGGER.log(Level.FINE, "save: {0}", getMilestonesByOrdinalByJob());
-    }
-
-    private static XmlFile getConfigFile() throws IOException {
-        Jenkins j = Jenkins.getInstance();
-        if (j == null) {
-            throw new IOException("Jenkins is not running"); // do not use Jenkins.getActiveInstance() as that is an ISE
-        }
-        return new XmlFile(new File(j.getRootDir(), MilestoneStep.class.getName() + ".xml"));
+    private static void save() {
+        Jenkins.getInstance().getDescriptorOrDie(MilestoneStep.class).save();
     }
 
     @Extension
@@ -349,81 +342,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             }
             exit(r);
         }
-    }
-
-    static final class Milestone {
-
-        /**
-         * Milestone ordinal.
-         */
-        final Integer ordinal;
-
-        /**
-         * Numbers of builds that passed this milestone but haven't passed the next one.
-         */
-        final Set<Integer> inSight = new TreeSet<Integer>();
-
-        /**
-         * Last build that passed through the milestone, or null if none passed yet.
-         */
-        @CheckForNull
-        Integer lastBuild;
-
-        Milestone(Integer ordinal) {
-            this.ordinal = ordinal;
-        }
-
-        @Override public String toString() {
-            return "Milestone[inSight=" + inSight + "]";
-        }
-
-        public void pass(StepContext context, Run<?, ?> build) {
-            lastBuild = build.getNumber();
-            inSight.add(build.getNumber());
-        }
-
-        /**
-         * Called when a build passes the next milestone.
-         *
-         * @param build the build passing the next milestone.
-         * @return true if the build was in sight (exists in inSight), false otherwise.
-         */
-        public boolean wentAway(Run<?, ?> build) {
-            if (inSight.contains(build.getNumber())) {
-                inSight.remove(build.getNumber()); // XSTR-757
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    /**
-     * Records that a build was canceled because it reached a milestone but a newer build already passed it, or
-     * a newer build {@link Milestone#wentAway(Run)} from the last milestone the build passed.
-     */
-    public static final class CanceledCause extends CauseOfInterruption {
-
-        private static final long serialVersionUID = 1;
-
-        private final String newerBuild;
-
-        CanceledCause(Run<?,?> newerBuild) {
-            this.newerBuild = newerBuild.getExternalizableId();
-        }
-
-        CanceledCause(String newerBuild) {
-            this.newerBuild = newerBuild;
-        }
-
-        public Run<?,?> getNewerBuild() {
-            return Run.fromExternalizableId(newerBuild);
-        }
-
-        @Override public String getShortDescription() {
-            return "Superseded by " + getNewerBuild().getDisplayName();
-        }
-
     }
 
     private static final long serialVersionUID = 1L;
