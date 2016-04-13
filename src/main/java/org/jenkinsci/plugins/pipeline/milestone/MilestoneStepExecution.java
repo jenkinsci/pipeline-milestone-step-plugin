@@ -113,17 +113,19 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         // If step.ordinal is set then use it and check order with the previous one
         // Otherwise use calculated ordinal (previousOrdinal + 1)
         int nextOrdinal = 0;
-        if (previousOrdinal != null) {
-            if (step.getOrdinal() != null) {
-                nextOrdinal = step.getOrdinal();
-                if (previousOrdinal >= nextOrdinal) {
+        Integer stepOrdinal = step.getOrdinal();
+        if (stepOrdinal != null) {
+            if (previousOrdinal != null) {
+                if (previousOrdinal >= stepOrdinal) {
                     throw new AbortException(String.format("Invalid ordinal %s, as the previous one was %s", nextOrdinal, previousOrdinal));
+                } else {
+                    nextOrdinal = stepOrdinal;
                 }
-            } else {
+            } // else next ordinal 0
+        } else {
+            if (previousOrdinal != null) {
                 nextOrdinal = previousOrdinal + 1;
-            }
-        } else if (step.getOrdinal() != null) {
-            nextOrdinal = step.getOrdinal();
+            } // else next ordinal 0
         }
         node.addAction(new OrdinalAction(nextOrdinal));
         return nextOrdinal;
