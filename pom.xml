@@ -13,6 +13,8 @@
     <packaging>hpi</packaging>
     <name>Pipeline: Milestone Step</name>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/Pipeline+Milestone+Step+Plugin</url>
+    <description>Plugin that provides the milestone step</description>
+
     <licenses>
         <license>
             <name>MIT License</name>
