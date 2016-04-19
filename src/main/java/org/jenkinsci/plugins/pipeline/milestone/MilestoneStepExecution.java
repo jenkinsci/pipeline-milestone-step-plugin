@@ -122,7 +122,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 } else {
                     nextOrdinal = stepOrdinal;
                 }
-            } // else next ordinal 0
+            } else {
+                nextOrdinal = stepOrdinal;
+            }
         } else {
             if (previousOrdinal != null) {
                 nextOrdinal = previousOrdinal + 1;
