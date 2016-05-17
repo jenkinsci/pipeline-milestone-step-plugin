@@ -160,7 +160,7 @@ public class MilestoneStepTest {
                         "  milestone ordinal: 1\n" +
                         "}\n" +
                         "milestone()\n" +
-                        "milestone ordinal: 5\n" +
+                        "milestone 5\n" +
                         "milestone()"));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
 
