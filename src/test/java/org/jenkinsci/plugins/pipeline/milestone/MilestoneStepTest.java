@@ -11,6 +11,8 @@ import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 
+import static org.junit.Assert.*;
+
 import hudson.model.Result;
 
 public class MilestoneStepTest {
@@ -102,6 +104,34 @@ public class MilestoneStepTest {
 
                 // Once #2 finishes, so it passes the virtual ad-inifinitum milestone, then #1 is automatically cancelled
                 story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b1));
+            }
+        });
+    }
+
+    @Test
+    public void olderBuildsMustNotBeCancelledOnBuildAborted() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "milestone label: 'My Label'\n" +
+                        "node {\n" +
+                        "  echo 'First milestone'\n" +
+                        "  semaphore 'wait'\n" +
+                        "}"));
+                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/1", b1);
+                WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/2", b2);
+                // Now both #1 and #2 passed milestone 1
+
+                // Abort #2
+                b2.getOneOffExecutor().doStop();
+                story.j.waitForMessage("Finished: ABORTED", b2);
+
+                assertTrue(b1.isBuilding()); // #1 shuould not be cancelled
+                SemaphoreStep.success("wait/1", null);
+                story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(b1));
             }
         });
     }

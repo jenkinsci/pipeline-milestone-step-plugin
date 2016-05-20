@@ -354,7 +354,8 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     @Extension
     public static final class Listener extends RunListener<Run<?,?>> {
         @Override public void onCompleted(Run<?,?> r, TaskListener listener) {
-            if (!(r instanceof FlowExecutionOwner.Executable) || ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner() == null) {
+            if (!(r instanceof FlowExecutionOwner.Executable) || ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner() == null
+                    || Result.ABORTED.equals(r.getResult())) {
                 return;
             }
             exit(r);
