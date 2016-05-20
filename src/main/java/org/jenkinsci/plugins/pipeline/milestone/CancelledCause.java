@@ -36,12 +36,17 @@ public final class CancelledCause extends CauseOfInterruption {
 
     private final String newerBuild;
 
+    private final String displayName;
+
     CancelledCause(Run<?,?> newerBuild) {
         this.newerBuild = newerBuild.getExternalizableId();
+        this.displayName = newerBuild.getDisplayName();
     }
 
     CancelledCause(String newerBuild) {
         this.newerBuild = newerBuild;
+        // No display name available, use what we have at this point
+        this.displayName = newerBuild;
     }
 
     public Run<?,?> getNewerBuild() {
@@ -49,7 +54,7 @@ public final class CancelledCause extends CauseOfInterruption {
     }
 
     @Override public String getShortDescription() {
-        return "Superseded by " + getNewerBuild().getDisplayName();
+        return "Superseded by " + displayName;
     }
 
 }

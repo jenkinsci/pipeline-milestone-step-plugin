@@ -37,7 +37,6 @@ import java.util.logging.Logger;
 
 import javax.annotation.CheckForNull;
 
-import org.jenkinsci.plugins.workflow.actions.LabelAction;
 import org.jenkinsci.plugins.workflow.actions.ThreadNameAction;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
 import org.jenkinsci.plugins.workflow.graph.BlockEndNode;
@@ -75,7 +74,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     @Override
     public Void run() throws Exception {
         if (step.getLabel() != null) {
-            node.addAction(new LabelAction(step.getLabel()));
             node.addAction(new MilestoneAction(step.getLabel()));
         }
         int ordinal = processOrdinal();
