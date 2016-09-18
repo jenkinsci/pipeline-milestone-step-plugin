@@ -109,7 +109,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void olderBuildsMustNotBeCancelledOnBuildAborted() {
+    public void olderBuildsMustBeCancelledOnBuildAborted() {
         story.addStep(new Statement() {
             @Override public void evaluate() throws Throwable {
                 WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
@@ -129,9 +129,7 @@ public class MilestoneStepTest {
                 b2.getOneOffExecutor().doStop();
                 story.j.waitForMessage("Finished: ABORTED", b2);
 
-                assertTrue(b1.isBuilding()); // #1 shuould not be cancelled
-                SemaphoreStep.success("wait/1", null);
-                story.j.assertBuildStatus(Result.SUCCESS, story.j.waitForCompletion(b1));
+                story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b1)); // #1 shuould be cancelled
             }
         });
     }

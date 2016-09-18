@@ -85,7 +85,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      * Gets the next ordinal and throw {@link AbortException} the milestone lives inside a parallel step branch.
      */
     private synchronized int processOrdinal() throws AbortException {
-        // TODO: use FlowNodeSerialWalker when released
+        // TODO: use FlowNodeSerialWalker when released (if possible)
         FlowGraphWalker walker = new FlowGraphWalker();
         walker.addHead(node);
         Integer previousOrdinal = null;
@@ -352,8 +352,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     @Extension
     public static final class Listener extends RunListener<Run<?,?>> {
         @Override public void onCompleted(Run<?,?> r, TaskListener listener) {
-            if (!(r instanceof FlowExecutionOwner.Executable) || ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner() == null
-                    || Result.ABORTED.equals(r.getResult())) {
+            if (!(r instanceof FlowExecutionOwner.Executable) || ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner() == null) {
                 return;
             }
             exit(r);
