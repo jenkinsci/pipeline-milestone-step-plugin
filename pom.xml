@@ -9,7 +9,7 @@
     </parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>pipeline-milestone-step</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>Pipeline: Milestone Step</name>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/Pipeline+Milestone+Step+Plugin</url>
@@ -25,7 +25,7 @@
         <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
-      <tag>pipeline-milestone-step-1.0</tag>
+      <tag>HEAD</tag>
     </scm>
     <repositories>
         <repository>
