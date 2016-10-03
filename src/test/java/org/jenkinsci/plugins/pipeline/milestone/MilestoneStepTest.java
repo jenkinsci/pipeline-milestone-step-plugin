@@ -9,6 +9,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.BuildWatcher;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 
 import static org.junit.Assert.*;
@@ -172,6 +173,24 @@ public class MilestoneStepTest {
                         "  }\n" +
                         "}\n" +
                         "milestone()\n"));
+                story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+            }
+        });
+    }
+
+    @Issue("JENKINS-38464")
+    @Test
+    public void milestoneAllowedOutsideParallel() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "node {\n" +
+                        "  parallel one: { echo 'First' }, two: { \n" +
+                        "    echo 'In-node'\n" +
+                        "  }\n" +
+                        "  milestone 1\n" +
+                        "}"));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
             }
         });
