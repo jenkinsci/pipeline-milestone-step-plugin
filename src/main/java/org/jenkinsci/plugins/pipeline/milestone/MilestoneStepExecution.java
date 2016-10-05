@@ -89,7 +89,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      * Gets the next ordinal and throw {@link AbortException} the milestone lives inside a parallel step branch.
      */
     private synchronized int processOrdinal() throws AbortException {
-        List<FlowNode> heads = (node.getExecution() == null) ? Collections.<FlowNode>emptyList() : node.getExecution().getCurrentHeads();
+        List<FlowNode> heads = node.getExecution().getCurrentHeads();
         if (heads.size() > 1) {  // TA-DA!  We're inside a parallel, which is forbidden.
             throw new AbortException("Using a milestone step inside parallel is not allowed");
         }
