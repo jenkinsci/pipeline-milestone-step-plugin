@@ -26,6 +26,7 @@ package org.jenkinsci.plugins.pipeline.milestone;
 import static java.util.logging.Level.WARNING;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import java.util.logging.Logger;
 
 import javax.annotation.CheckForNull;
 
+import com.google.common.base.Predicate;
 import org.jenkinsci.plugins.workflow.actions.ThreadNameAction;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
 import org.jenkinsci.plugins.workflow.graph.BlockEndNode;
@@ -44,6 +46,8 @@ import org.jenkinsci.plugins.workflow.graph.BlockStartNode;
 import org.jenkinsci.plugins.workflow.graph.FlowGraphWalker;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.graph.FlowStartNode;
+import org.jenkinsci.plugins.workflow.graphanalysis.FlowScanningUtils;
+import org.jenkinsci.plugins.workflow.graphanalysis.LinearScanner;
 import org.jenkinsci.plugins.workflow.steps.AbstractSynchronousStepExecution;
 import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
@@ -85,29 +89,14 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      * Gets the next ordinal and throw {@link AbortException} the milestone lives inside a parallel step branch.
      */
     private synchronized int processOrdinal() throws AbortException {
-        // TODO: use FlowNodeSerialWalker when released (if possible)
-        FlowGraphWalker walker = new FlowGraphWalker();
-        walker.addHead(node);
-        Integer previousOrdinal = null;
-        int parallelDetectionEnabled = 0;
-        for (FlowNode n : walker) {
-
-            if (parallelDetectionEnabled <= 0 && n.getAction(ThreadNameAction.class) != null) {
-                throw new AbortException("Using a milestone step inside parallel is not allowed");
-            }
-
-            if (n instanceof BlockEndNode) {
-                parallelDetectionEnabled++;
-            } else if (n instanceof BlockStartNode && !(n instanceof FlowStartNode)) {
-                parallelDetectionEnabled--;
-            }
-
-            OrdinalAction a = n.getAction(OrdinalAction.class);
-            if (a != null) {
-                previousOrdinal = a.ordinal;
-                break;
-            }
+        List<FlowNode> heads = node.getExecution().getCurrentHeads();
+        if (heads.size() > 1) {  // TA-DA!  We're inside a parallel, which is forbidden.
+            throw new AbortException("Using a milestone step inside parallel is not allowed");
         }
+
+        Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
+        FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads, ordinalMatcher);
+        Integer previousOrdinal = (lastOrdinalNode != null) ? lastOrdinalNode.getAction(OrdinalAction.class).ordinal : null;
 
         // If step.ordinal is set then use it and check order with the previous one
         // Otherwise use calculated ordinal (previousOrdinal + 1)
@@ -242,18 +231,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         try {
             List<FlowNode> heads = owner.get().getCurrentHeads();
             if (heads.size() == 1) {
-                FlowGraphWalker walker = new FlowGraphWalker();
-                walker.addHead(heads.get(0));
-                for (FlowNode n : walker) {
-                    OrdinalAction action = n.getAction(OrdinalAction.class);
-                    if (action != null) {
-                        lastMilestoneOrdinal = action.ordinal;
-                        break;
-                    }
-                }
-            } else {
-                LOGGER.log(Level.WARNING, "Trying to get last ordinal for a build still in progress?");
-                return null;
+                Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
+                FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads, ordinalMatcher);
+                return (lastOrdinalNode != null) ? lastOrdinalNode.getAction(OrdinalAction.class).ordinal : null;
             }
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to traverse flow graph to search the last milestone ordinal", e);
