@@ -105,7 +105,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         if (stepOrdinal != null) {
             if (previousOrdinal != null) {
                 if (previousOrdinal >= stepOrdinal) {
-                    throw new AbortException(String.format("Invalid ordinal %s, as the previous one was %s", nextOrdinal, previousOrdinal));
+                    throw new AbortException(String.format("Invalid ordinal %s, as the previous one was %s", stepOrdinal, previousOrdinal));
                 } else {
                     nextOrdinal = stepOrdinal;
                 }
