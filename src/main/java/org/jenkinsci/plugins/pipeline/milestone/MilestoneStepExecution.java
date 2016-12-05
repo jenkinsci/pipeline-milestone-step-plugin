@@ -26,7 +26,6 @@ package org.jenkinsci.plugins.pipeline.milestone;
 import static java.util.logging.Level.WARNING;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -39,13 +38,10 @@ import java.util.logging.Logger;
 import javax.annotation.CheckForNull;
 
 import com.google.common.base.Predicate;
-import org.jenkinsci.plugins.workflow.actions.ThreadNameAction;
+import hudson.model.Item;
+import hudson.model.listeners.ItemListener;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
-import org.jenkinsci.plugins.workflow.graph.BlockEndNode;
-import org.jenkinsci.plugins.workflow.graph.BlockStartNode;
-import org.jenkinsci.plugins.workflow.graph.FlowGraphWalker;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
-import org.jenkinsci.plugins.workflow.graph.FlowStartNode;
 import org.jenkinsci.plugins.workflow.graphanalysis.FlowScanningUtils;
 import org.jenkinsci.plugins.workflow.graphanalysis.LinearScanner;
 import org.jenkinsci.plugins.workflow.steps.AbstractSynchronousStepExecution;
@@ -336,6 +332,29 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 return;
             }
             exit(r);
+        }
+    }
+
+    /**
+     * Clean up tracked jobs on deleted.
+     */
+    @Extension
+    public static class CleanupJobsOnDelete extends ItemListener {
+
+        @Override
+        public void onDeleted(Item item) {
+            if (item instanceof Job) {
+                String jobName = item.getFullName();
+                Map<Integer, Milestone> job = getMilestonesByOrdinalByJob().get(jobName);
+                if (job != null) {
+                    remove(jobName);
+                }
+            }
+        }
+
+        private synchronized void remove(String jobName) {
+            getMilestonesByOrdinalByJob().remove(jobName);
+            save();
         }
     }
 
