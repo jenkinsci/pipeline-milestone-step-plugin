@@ -25,6 +25,7 @@ package org.jenkinsci.plugins.pipeline.milestone;
 
 import hudson.model.Run;
 import jenkins.model.CauseOfInterruption;
+import org.kohsuke.stapler.export.Exported;
 
 /**
  * Records that a build was canceled because it reached a milestone but a newer build already passed it, or
@@ -47,6 +48,11 @@ public final class CancelledCause extends CauseOfInterruption {
         this.newerBuild = newerBuild;
         // No display name available, use what we have at this point
         this.displayName = newerBuild;
+    }
+
+    @Exported
+    public String getNewerRunId() {
+        return newerBuild;
     }
 
     public Run<?,?> getNewerBuild() {
