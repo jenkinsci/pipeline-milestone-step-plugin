@@ -268,7 +268,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 Run<?, ?> olderInSightBuild = r.getParent().getBuildByNumber(inSightNumber);
                 Executor e = olderInSightBuild.getExecutor();
                 if (e != null) {
-                    e.interrupt(Result.NOT_BUILT, new CancelledCause(r.getExternalizableId()));
+                    e.interrupt(Result.NOT_BUILT, new CancelledCause(r));
                 } else {
                     LOGGER.log(WARNING, "could not cancel an older flow because it has no assigned executor");
                 }
@@ -292,11 +292,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         if (context.isReady()) {
             println(context, "Canceled since build #" + build + " already got here");
             Run<?, ?> r = context.get(Run.class);
-            String job = "";
-            if (r != null) { // it should be always non-null at this point, but let's do a defensive check
-                job = r.getParent().getFullName();
-            }
-            throw new FlowInterruptedException(Result.NOT_BUILT, new CancelledCause(job + "#" + build));
+            // Defensive check as the previous run may have been deleted
+            CancelledCause cause = r != null ? new CancelledCause(r) : new CancelledCause("#" + build, build);
+            throw new FlowInterruptedException(Result.NOT_BUILT, cause);
         } else {
             LOGGER.log(WARNING, "cannot cancel dead #" + build);
         }

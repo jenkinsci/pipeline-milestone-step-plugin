@@ -27,6 +27,8 @@ import hudson.model.Run;
 import jenkins.model.CauseOfInterruption;
 import org.kohsuke.stapler.export.Exported;
 
+import javax.annotation.Nullable;
+
 /**
  * Records that a build was canceled because it reached a milestone but a newer build already passed it, or
  * a newer build {@link Milestone#wentAway(Run)} from the last milestone the build passed.
@@ -39,24 +41,31 @@ public final class CancelledCause extends CauseOfInterruption {
 
     private final String displayName;
 
+    private final int newerBuildNumber;
+
     CancelledCause(Run<?,?> newerBuild) {
+        this.newerBuildNumber = newerBuild.getNumber();
         this.newerBuild = newerBuild.getExternalizableId();
         this.displayName = newerBuild.getDisplayName();
     }
 
-    CancelledCause(String newerBuild) {
-        this.newerBuild = newerBuild;
-        // No display name available, use what we have at this point
-        this.displayName = newerBuild;
+    CancelledCause(String displayName, int newerBuildNumber) {
+        this.newerBuild = null;
+        this.displayName = displayName;
+        this.newerBuildNumber = newerBuildNumber;
     }
 
     @Exported
-    public String getNewerRunId() {
-        return newerBuild;
+    public int getNewerRunId() {
+        return newerBuildNumber;
     }
 
+    /**
+     * @return run or null if it does not exist
+     */
+    @Nullable
     public Run<?,?> getNewerBuild() {
-        return Run.fromExternalizableId(newerBuild);
+        return newerBuild != null ? Run.fromExternalizableId(newerBuild) : null;
     }
 
     @Override public String getShortDescription() {
