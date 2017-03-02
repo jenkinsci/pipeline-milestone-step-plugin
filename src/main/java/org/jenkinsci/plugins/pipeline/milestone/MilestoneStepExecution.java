@@ -131,7 +131,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
         LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
         println(context, "Trying to pass milestone " + ordinal);
-        load();
         Job<?,?> job = r.getParent();
         String jobName = job.getFullName();
         Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
@@ -175,7 +174,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static synchronized void exit(Run<?,?> r) {
-        load();
         LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {r, getMilestonesByOrdinalByJob()});
         Job<?,?> job = r.getParent();
         String jobName = job.getFullName();
@@ -315,10 +313,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 }
             }
         }
-    }
-
-    private static void load() {
-        Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class).load();
     }
 
     private static void save() {
