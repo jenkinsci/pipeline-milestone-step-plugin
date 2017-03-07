@@ -87,6 +87,7 @@ public class MilestoneStep extends AbstractStepImpl {
 
         public DescriptorImpl() {
             super(MilestoneStepExecution.class);
+            load();
         }
 
         @Override
@@ -116,10 +117,6 @@ public class MilestoneStep extends AbstractStepImpl {
 
         public Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
             return milestonesByOrdinalByJob;
-        }
-
-        /* package */ void setMilestonesByOrdinalByJob(Map<String, Map<Integer, Milestone>> m) {
-            milestonesByOrdinalByJob = m;
         }
 
     }

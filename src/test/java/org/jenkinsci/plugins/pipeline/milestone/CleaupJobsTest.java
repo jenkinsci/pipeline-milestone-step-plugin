@@ -23,11 +23,20 @@
  */
 package org.jenkinsci.plugins.pipeline.milestone;
 
+import hudson.logging.LogRecorder;
+import hudson.logging.LogRecorderManager;
+import hudson.model.listeners.ItemListener;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.Rule;
 import org.junit.Test;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+
+import static org.junit.Assert.assertFalse;
 
 public class CleaupJobsTest {
 
@@ -47,5 +56,23 @@ public class CleaupJobsTest {
         p.setDefinition(new CpsFlowDefinition("milestone 1;milestone 2"));
         j.assertBuildStatusSuccess(p.scheduleBuild2(0)); // build #1 is not cancelled
 
+    }
+
+
+    @Issue("JENKINS-41311")
+    @Test
+    public void noNPEOnCleanup() throws Exception {
+        LogRecorder recorder = new LogRecorder("recorder");
+        LogRecorderManager mgr = j.jenkins.getLog();
+        LogRecorder.Target t = new LogRecorder.Target(ItemListener.class.getName(), Level.ALL);
+        recorder.targets.add(t);
+        recorder.save();
+        t.enable();
+        mgr.logRecorders.put("recorder", recorder);
+
+        j.createFreeStyleProject().delete();
+        for (LogRecord r : recorder.getLogRecords()) {
+            assertFalse(r.getMessage().contains("failed to send event to listener of class org.jenkinsci.plugins.pipeline.milestone.MilestoneStepExecution$CleanupJobsOnDelete"));
+        }
     }
 }
