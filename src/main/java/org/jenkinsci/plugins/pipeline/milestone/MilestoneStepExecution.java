@@ -91,8 +91,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
 
         Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
-        FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads, ordinalMatcher);
-        Integer previousOrdinal = (lastOrdinalNode != null) ? lastOrdinalNode.getAction(OrdinalAction.class).ordinal : null;
+        FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads.get(0), ordinalMatcher);
+        OrdinalAction action = lastOrdinalNode != null ? lastOrdinalNode.getAction(OrdinalAction.class) : null;
+        Integer previousOrdinal = action != null ? action.ordinal : null;
 
         // If step.ordinal is set then use it and check order with the previous one
         // Otherwise use calculated ordinal (previousOrdinal + 1)
@@ -226,8 +227,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             List<FlowNode> heads = owner.get().getCurrentHeads();
             if (heads.size() == 1) {
                 Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
-                FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads, ordinalMatcher);
-                return (lastOrdinalNode != null) ? lastOrdinalNode.getAction(OrdinalAction.class).ordinal : null;
+                FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads.get(0), ordinalMatcher);
+                OrdinalAction action = lastOrdinalNode != null ? lastOrdinalNode.getAction(OrdinalAction.class) : null;
+                return action != null ? action.ordinal : null;
             }
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to traverse flow graph to search the last milestone ordinal", e);
