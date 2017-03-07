@@ -41,6 +41,7 @@
     </pluginRepositories>
     <properties>
         <jenkins.version>1.642.3</jenkins.version>
+        <workflow-support-plugin.version>2.13</workflow-support-plugin.version>
     </properties>
     <dependencies>
         <dependency>
@@ -74,7 +75,13 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins.workflow</groupId>
             <artifactId>workflow-support</artifactId>
-            <version>2.13</version>
+            <version>${workflow-support-plugin.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-support</artifactId>
+            <version>${workflow-support-plugin.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>
         </dependency>
