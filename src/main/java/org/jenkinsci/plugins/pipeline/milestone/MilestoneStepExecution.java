@@ -341,9 +341,12 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         public void onDeleted(Item item) {
             if (item instanceof Job) {
                 String jobName = item.getFullName();
-                Map<Integer, Milestone> job = getMilestonesByOrdinalByJob().get(jobName);
-                if (job != null) {
-                    remove(jobName);
+                Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob = getMilestonesByOrdinalByJob();
+                if (milestonesByOrdinalByJob != null) {
+                    Map<Integer, Milestone> job = milestonesByOrdinalByJob.get(jobName);
+                    if (job != null) {
+                        remove(jobName);
+                    }
                 }
             }
         }
