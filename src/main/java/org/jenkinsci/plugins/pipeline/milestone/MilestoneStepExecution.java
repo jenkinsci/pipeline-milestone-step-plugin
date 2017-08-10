@@ -191,27 +191,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
         if (modified) {
             cleanUp(job, jobName);
-        }
-
-        // Clean non-existing milestones
-        if (r instanceof FlowExecutionOwner.Executable) {
-            Integer lastMilestoneOrdinal = getLastOrdinalInBuild((FlowExecutionOwner.Executable) r);
-            if (lastMilestoneOrdinal == null) {
-                return;
-            }
-            Milestone m = getFirstWithoutInSight(milestonesInJob);
-            while (m != null && milestonesInJob.size() - 1 > lastMilestoneOrdinal) {
-                modified = true;
-                milestonesInJob.remove(m.ordinal);
-                m = getFirstWithoutInSight(milestonesInJob);
-            }
-            if (milestonesInJob.isEmpty()) {
-                modified = true;
-                getMilestonesByOrdinalByJob().remove(jobName);
-            }
-        }
-
-        if (modified) {
             save();
         }
     }
