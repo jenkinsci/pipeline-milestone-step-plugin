@@ -223,4 +223,45 @@ public class MilestoneStepTest {
         });
     }
 
+    @Issue("JENKINS-46097")
+    @Test
+    public void threeBuilds() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "semaphore 'wait'\n" +
+                        "milestone()\n" +
+                        "echo 'Passed first milestone'\n" +
+                        "milestone()\n" +
+                        "echo 'Passed second milestone'\n" +
+                        "milestone()\n" +
+                        "echo 'Passed third milestone'\n" +
+                        "milestone()\n" +
+                        "echo 'Passed fourth milestone'\n"));
+                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/1", b1);
+                WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/2", b2);
+                WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/3", b3);
+
+                // Let #3 continue so it completes
+                SemaphoreStep.success("wait/3", null);
+                story.j.waitForCompletion(b3);
+
+		// Let #1 continue
+                SemaphoreStep.success("wait/1", null);
+                story.j.waitForCompletion(b1);
+
+		// Let #2 continue
+                SemaphoreStep.success("wait/2", null);
+
+                // #2 should fail at milestone 0
+                story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b2));
+                story.j.assertLogNotContains("Passed first milestone", b2);
+            }
+        });
+    }
+
 }
