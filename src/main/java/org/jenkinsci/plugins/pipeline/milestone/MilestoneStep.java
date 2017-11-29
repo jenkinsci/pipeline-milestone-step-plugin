@@ -36,6 +36,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
+import hudson.Util;
 
 /**
  * This step can be used to grant:
@@ -65,7 +66,7 @@ public class MilestoneStep extends AbstractStepImpl {
 
     @DataBoundSetter
     public void setLabel(String label) {
-        this.label = label;
+        this.label = Util.fixEmpty(label);
     }
 
     @CheckForNull

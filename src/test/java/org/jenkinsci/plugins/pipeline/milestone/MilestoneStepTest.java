@@ -12,9 +12,9 @@ import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 
-import static org.junit.Assert.*;
 
 import hudson.model.Result;
+import org.jenkinsci.plugins.workflow.cps.SnippetizerTester;
 
 public class MilestoneStepTest {
 
@@ -219,6 +219,27 @@ public class MilestoneStepTest {
                         "milestone()\n" +
                         "milestone ordinal: 2")); // Invalid ordinal
                 story.j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
+            }
+        });
+    }
+
+    @Test
+    public void configRoundtrip() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                SnippetizerTester t = new SnippetizerTester(story.j);
+                MilestoneStep lacksOrdinal = new MilestoneStep(null);
+                t.assertRoundTrip(lacksOrdinal, "milestone()");
+                MilestoneStep hasOrdinal = new MilestoneStep(1);
+                t.assertRoundTrip(hasOrdinal, "milestone 1");
+                lacksOrdinal.setLabel("here");
+                t.assertRoundTrip(lacksOrdinal, "milestone label: 'here'");
+                hasOrdinal.setLabel("here");
+                t.assertRoundTrip(hasOrdinal, "milestone label: 'here', ordinal: 1");
+                lacksOrdinal.setLabel("");
+                t.assertRoundTrip(lacksOrdinal, "milestone()");
+                hasOrdinal.setLabel("");
+                t.assertRoundTrip(hasOrdinal, "milestone 1");
             }
         });
     }
