@@ -86,7 +86,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      */
     private synchronized int processOrdinal() throws AbortException {
         List<FlowNode> heads = node.getExecution().getCurrentHeads();
-        if (heads.size() > 1) {  // TA-DA!  We're inside a parallel, which is forbidden.
+        if (heads.size() > 1 && !step.isUnsafe()) {  // TA-DA!  We're inside a parallel, which is forbidden.
             throw new AbortException("Using a milestone step inside parallel is not allowed");
         }
 
