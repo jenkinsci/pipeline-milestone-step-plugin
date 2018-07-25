@@ -24,6 +24,38 @@ public class MilestoneStepTest {
     @Rule
     public RestartableJenkinsRule story = new RestartableJenkinsRule();
 
+    @Issue("JENKINS-43353")
+    @Test
+    public void killPrecedingBuild() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition("for (int i = 0; i < (BUILD_NUMBER as int); i++) {milestone()}; semaphore 'run'", true));
+                {
+                    WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                    SemaphoreStep.waitForStart("run/1", b1);
+                    WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+                    SemaphoreStep.waitForStart("run/2", b2);
+                    story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b1));
+                    SemaphoreStep.success("run/2", null);
+                    story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b2));
+                }
+                {
+                    WorkflowRun b3 = p.scheduleBuild2(0).waitForStart();
+                    SemaphoreStep.waitForStart("run/3", b3);
+                    WorkflowRun b4 = p.scheduleBuild2(0).waitForStart();
+                    SemaphoreStep.waitForStart("run/4", b4);
+                    WorkflowRun b5 = p.scheduleBuild2(0).waitForStart();
+                    SemaphoreStep.waitForStart("run/5", b5);
+                    story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b3));
+                    story.j.assertBuildStatus(Result.NOT_BUILT, story.j.waitForCompletion(b4));
+                    SemaphoreStep.success("run/5", null);
+                    story.j.assertBuildStatusSuccess(story.j.waitForCompletion(b5));
+                }
+            }
+        });
+    }
+
     @Test
     public void buildsMustPassThroughInOrder() {
         story.addStep(new Statement() {
