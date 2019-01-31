@@ -223,7 +223,7 @@ public class MilestoneStepTest {
                         "  }\n" +
                         "  milestone unsafe: true\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
 
                 p.setDefinition(new CpsFlowDefinition(
@@ -234,7 +234,7 @@ public class MilestoneStepTest {
                         "    milestone unsafe: true\n" +
                         "  }\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
 
                 p.setDefinition(new CpsFlowDefinition(
@@ -245,7 +245,7 @@ public class MilestoneStepTest {
                         "    echo 'Inside node'\n" +
                         "  }\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
             }
         });
