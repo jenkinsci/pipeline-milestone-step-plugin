@@ -126,8 +126,8 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
     }
 
-    private static Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-        return ((MilestoneStep.DescriptorImpl) Jenkins.get().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
+    private static Map<String, Map<String, Milestone>> getMilestonesByGroupByJob() {
+        return ((MilestoneStep.DescriptorImpl) Jenkins.get().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByGroupByJob();
     }
 
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
@@ -135,57 +135,68 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         println(context, "Trying to pass milestone " + ordinal);
         Job<?,?> job = r.getParent();
         String jobName = job.getFullName();
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
+        Map<String, Milestone> milestonesInJob = getMilestonesByGroupByJob().get(jobName);
         if (milestonesInJob == null) {
-            milestonesInJob = new TreeMap<Integer,Milestone>();
-            getMilestonesByOrdinalByJob().put(jobName, milestonesInJob);
+            milestonesInJob = new TreeMap<String,Milestone>();
+            getMilestonesByGroupByJob().put(jobName, milestonesInJob);
         }
-        Milestone milestone = milestonesInJob.get(ordinal);
+        Milestone milestone = milestonesInJob.get(getMilestoneId(ordinal, step.getGroup()));
         if (milestone == null) {
-            milestone = new Milestone(ordinal);
-            milestonesInJob.put(ordinal, milestone);
+            milestone = new Milestone(ordinal, step.getGroup());
+            milestonesInJob.put(getMilestoneId(ordinal, step.getGroup()), milestone);
         }
 
         // Defensive order check and cancel older builds behind
-        for (Map.Entry<Integer, Milestone> entry : milestonesInJob.entrySet()) {
-            if (entry.getKey().equals(ordinal)) {
+        for (Map.Entry<String, Milestone> entry : milestonesInJob.entrySet()) {
+            if (entry.getKey().equals(getMilestoneId(ordinal, step.getGroup()))) {
                 continue;
             }
             Milestone milestone2 = entry.getValue();
             // The build is passing a milestone, so it's not visible to any previous milestone
-            if (milestone2.wentAway(r)) {
+            if (milestone2.isInSight(r) && milestone.group.equals(milestone2.group) ) {
                 // Ordering check
-                if(milestone2.ordinal >= ordinal) {
+                if(milestone2.ordinal >= ordinal ) {
                     throw new AbortException(String.format("Unordered milestone. Found ordinal %s but %s (or bigger) was expected.", ordinal, milestone2.ordinal + 1));
                 }
                 // Cancel older builds (holding or waiting to enter)
                 cancelOldersInSight(milestone2, r);
+                milestone2.wentAway(r);
             }
         }
 
         // checking order
-        if (milestone.lastBuild != null && r.getNumber() < milestone.lastBuild) {
+        if (milestone.lastBuild != null
+                && r.getNumber() < milestone.lastBuild
+                && milestone.group.equals(step.getGroup()) )
+        {
+            LOGGER.log(Level.FINE,"cancel build {0} milestone {1}", new Object[]{r, milestone} );
             // cancel if it's older than the last one passing this milestone
             cancel(context, milestone.lastBuild);
         } else {
             // It's in-order, proceed
-            milestone.pass(context, r);
+            if(milestone.group.equals(step.getGroup())) {
+                milestone.pass(context, r);
+                LOGGER.log(Level.FINE,"Build {0} passed milestone {1} step {2}", new Object[]{r, milestone, step} );
+            } else {
+                LOGGER.log(Level.FINE,"Build {0} not passed milestone {1} step {2}", new Object[]{r, milestone, step} );
+            }
         }
         cleanUp(job, jobName);
         save();
     }
 
     private static synchronized void exit(Run<?,?> r) {
-        LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {r, getMilestonesByOrdinalByJob()});
+        LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {r, getMilestonesByGroupByJob()});
         Job<?,?> job = r.getParent();
         String jobName = job.getFullName();
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
+        Map<String, Milestone> milestonesInJob = getMilestonesByGroupByJob().get(jobName);
         if (milestonesInJob == null) {
             return;
         }
         boolean modified = false;
         for (Milestone milestone : milestonesInJob.values()) {
-            if (milestone.wentAway(r)) {
+            if (milestone.isInSight(r)) {
+                milestone.wentAway(r);
                 modified = true;
                 cancelOldersInSight(milestone, r);
             }
@@ -203,12 +214,12 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             Milestone m = getFirstWithoutInSight(milestonesInJob);
             while (m != null && milestonesInJob.size() - 1 > lastMilestoneOrdinal) {
                 modified = true;
-                milestonesInJob.remove(m.ordinal);
+                milestonesInJob.remove(m.group+"#"+m.ordinal);
                 m = getFirstWithoutInSight(milestonesInJob);
             }
             if (milestonesInJob.isEmpty()) {
                 modified = true;
-                getMilestonesByOrdinalByJob().remove(jobName);
+                getMilestonesByGroupByJob().remove(jobName);
             }
         }
 
@@ -242,8 +253,8 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
      * Returns the first milestone without any build in sight or null if not found.
      */
     @CheckForNull
-    private static Milestone getFirstWithoutInSight(Map<Integer, Milestone> milestones) {
-        for (Entry<Integer, Milestone> entry : milestones.entrySet()) {
+    private static Milestone getFirstWithoutInSight(Map<String, Milestone> milestones) {
+        for (Entry<String, Milestone> entry : milestones.entrySet()) {
             Milestone m = entry.getValue();
             if (m.inSight.isEmpty()) {
                 return m;
@@ -300,11 +311,11 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static void cleanUp(Job<?,?> job, String jobName) {
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
+        Map<String, Milestone> milestonesInJob = getMilestonesByGroupByJob().get(jobName);
         assert milestonesInJob != null;
-        Iterator<Entry<Integer, Milestone>> it = milestonesInJob.entrySet().iterator();
+        Iterator<Entry<String, Milestone>> it = milestonesInJob.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<Integer, Milestone> entry = it.next();
+            Map.Entry<String, Milestone> entry = it.next();
             Set<Integer> inSight = entry.getValue().inSight;
             Iterator<Integer> it2 = inSight.iterator();
             while (it2.hasNext()) {
@@ -342,7 +353,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         public void onDeleted(Item item) {
             if (item instanceof Job) {
                 String jobName = item.getFullName();
-                Map<Integer, Milestone> job = getMilestonesByOrdinalByJob().get(jobName);
+                Map<String, Milestone> job = getMilestonesByGroupByJob().get(jobName);
                 if (job != null) {
                     remove(jobName);
                 }
@@ -350,11 +361,14 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
 
         private synchronized void remove(String jobName) {
-            getMilestonesByOrdinalByJob().remove(jobName);
+            getMilestonesByGroupByJob().remove(jobName);
             save();
         }
     }
 
     private static final long serialVersionUID = 1L;
 
+    private static String getMilestoneId(Integer ordinal, String group) {
+        return group+"#"+ordinal;
+    }
 }
