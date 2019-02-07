@@ -132,7 +132,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
 
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
         LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
-        println(context, "Trying to pass milestone " + ordinal);
+        println(context, "Trying to pass milestone " + getMilestoneId(ordinal, step.getGroup()));
         Job<?,?> job = r.getParent();
         String jobName = job.getFullName();
         Map<String, Milestone> milestonesInJob = getMilestonesByGroupByJob().get(jobName);
@@ -162,6 +162,26 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 cancelOldersInSight(milestone2, r);
                 milestone2.wentAway(r);
             }
+
+            // cancel older builds in front if they're older
+            // and milestone policy is set to cancel them
+            if ( step.getPolicy() == MilestoneStep.MilestonePolicy.CANCEL_OLD_BUILDS
+                    && milestone2.lastBuild != null
+                    && r.getNumber() > milestone2.lastBuild
+                    && milestone2.group.equals(step.getGroup())
+            ) {
+                cancelOldersInSight(milestone2, r);
+            }
+        }
+
+        // cancel older builds in front if they're older
+        // and milestone policy is set to cancel them
+        if ( step.getPolicy() == MilestoneStep.MilestonePolicy.CANCEL_OLD_BUILDS
+                && milestone.lastBuild != null
+                && r.getNumber() > milestone.lastBuild
+                && milestone.group.equals(step.getGroup())
+        ) {
+            cancelOldersInSight(milestone, r);
         }
 
         // checking order

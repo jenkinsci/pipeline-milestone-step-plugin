@@ -29,6 +29,7 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import hudson.util.ListBoxModel;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
 import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -44,7 +45,7 @@ import hudson.Util;
  *   <li>Builds pass through the step in order (taking the build number as sorter field)</li>
  *   <li>Older builds will not proceed (they are aborted) if a newer one already entered the milestone</li>
  *   <li>When a build passes a milestone, any older build that passed the previous milestone - but not this one - is aborted.</li>
- *   <li>Once a build passes the milestone, it will be never aborted by a newer build that didn't pass the milestone yet.</li>
+ *   <li>Once a build passes the milestone, it will be never aborted by a newer build that didn't pass the milestone yet unless user set policy to cancel such old builds</li>
  * </ol>
  */
 public class MilestoneStep extends AbstractStepImpl {
@@ -68,6 +69,11 @@ public class MilestoneStep extends AbstractStepImpl {
      * Optional unsafe.
      */
     private boolean unsafe;
+
+    /**
+     * cancel policy
+     */
+    private MilestonePolicy policy = MilestonePolicy.CONTINUE_OLD_BUILDS;
 
     @DataBoundConstructor
     public MilestoneStep(Integer ordinal) {
@@ -93,6 +99,11 @@ public class MilestoneStep extends AbstractStepImpl {
         }
     }
 
+    @DataBoundSetter
+    public void setPolicy(MilestonePolicy policy) {
+        this.policy = policy;
+    }
+
     @CheckForNull
     public String getLabel() {
         return label;
@@ -112,6 +123,11 @@ public class MilestoneStep extends AbstractStepImpl {
         return group;
     }
 
+    @CheckForNull
+    public MilestonePolicy getPolicy() {
+        return policy;
+    }
+
     @Override
     public String toString() {
         return "MilestoneStep["
@@ -119,6 +135,14 @@ public class MilestoneStep extends AbstractStepImpl {
                 +", ordinal="+ordinal
                 +", label="+label
                 +"]";
+    }
+
+    public ListBoxModel doFillPolicyItems() {
+        ListBoxModel r = new ListBoxModel();
+        for (MilestonePolicy policy : MilestonePolicy.values()) {
+            r.add(policy.name());
+        }
+        return r;
     }
 
     @Extension
@@ -162,6 +186,13 @@ public class MilestoneStep extends AbstractStepImpl {
             return milestonesByGroupByJob;
         }
 
+
+    }
+
+    public enum MilestonePolicy {
+        CONTINUE_OLD_BUILDS,
+        CANCEL_OLD_BUILDS
     }
 
 }
+
