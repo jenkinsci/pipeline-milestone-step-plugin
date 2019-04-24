@@ -30,7 +30,7 @@ public class MilestoneStepTest {
         story.addStep(new Statement() {
             @Override public void evaluate() throws Throwable {
                 WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
-                p.setDefinition(new CpsFlowDefinition("for (int i = 0; i < (BUILD_NUMBER as int); i++) {milestone()}; semaphore 'run'", true));
+                p.setDefinition(new CpsFlowDefinition("def buildNumber = BUILD_NUMBER as int; if (buildNumber > 1) milestone(buildNumber - 1); milestone(buildNumber); semaphore 'run'", true));
                 {
                     WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                     SemaphoreStep.waitForStart("run/1", b1);
