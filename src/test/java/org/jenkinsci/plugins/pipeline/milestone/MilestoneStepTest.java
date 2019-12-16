@@ -210,6 +210,47 @@ public class MilestoneStepTest {
         });
     }
 
+    @Test
+    public void unsafeMilestoneAllowedInsideParallel() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "sleep 1\n" +
+                        "parallel one: { echo 'First' }, two: { \n" +
+                        "  node {\n" +
+                        "    echo 'Test'\n" +
+                        "  }\n" +
+                        "  milestone unsafe: true\n" +
+                        "}\n" +
+                        "milestone()\n"));
+                story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+
+                p.setDefinition(new CpsFlowDefinition(
+                        "sleep 1\n" +
+                        "parallel one: { echo 'First' }, two: { \n" +
+                        "  echo 'Pre-node'\n" +
+                        "  node {\n" +
+                        "    milestone unsafe: true\n" +
+                        "  }\n" +
+                        "}\n" +
+                        "milestone()\n"));
+                story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+
+                p.setDefinition(new CpsFlowDefinition(
+                        "sleep 1\n" +
+                        "parallel one: { echo 'First' }, two: { \n" +
+                        "  echo 'Pre-node'\n" +
+                        "  node {\n" +
+                        "    echo 'Inside node'\n" +
+                        "  }\n" +
+                        "}\n" +
+                        "milestone()\n"));
+                story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+            }
+        });
+    }
+
     @Issue("JENKINS-38464")
     @Test
     public void milestoneAllowedOutsideParallel() {

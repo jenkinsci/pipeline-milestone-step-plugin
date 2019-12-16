@@ -59,6 +59,11 @@ public class MilestoneStep extends AbstractStepImpl {
      */
     private Integer ordinal;
 
+    /**
+     * Optional unsafe.
+     */
+    private boolean unsafe;
+
     @DataBoundConstructor
     public MilestoneStep(Integer ordinal) {
         this.ordinal = ordinal;
@@ -69,6 +74,11 @@ public class MilestoneStep extends AbstractStepImpl {
         this.label = Util.fixEmpty(label);
     }
 
+    @DataBoundSetter
+    public void setUnsafe(boolean unsafe) {
+        this.unsafe = unsafe;
+    }
+
     @CheckForNull
     public String getLabel() {
         return label;
@@ -77,6 +87,10 @@ public class MilestoneStep extends AbstractStepImpl {
     @CheckForNull
     public Integer getOrdinal() {
         return ordinal;
+    }
+
+    public boolean isUnsafe() {
+        return unsafe;
     }
 
     @Extension
