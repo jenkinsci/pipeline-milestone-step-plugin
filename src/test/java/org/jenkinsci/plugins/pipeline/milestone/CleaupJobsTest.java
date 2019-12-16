@@ -46,14 +46,14 @@ public class CleaupJobsTest {
     @Test
     public void cleaupTrackedJobsOnDeleted() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("milestone 1;milestone 2"));
+        p.setDefinition(new CpsFlowDefinition("milestone 1;milestone 2", true));
         j.assertBuildStatusSuccess(p.scheduleBuild2(0));
         j.assertBuildStatusSuccess(p.scheduleBuild2(0));
 
         p.delete();
 
         p = j.jenkins.createProject(WorkflowJob.class, "p");
-        p.setDefinition(new CpsFlowDefinition("milestone 1;milestone 2"));
+        p.setDefinition(new CpsFlowDefinition("milestone 1;milestone 2", true));
         j.assertBuildStatusSuccess(p.scheduleBuild2(0)); // build #1 is not cancelled
 
     }

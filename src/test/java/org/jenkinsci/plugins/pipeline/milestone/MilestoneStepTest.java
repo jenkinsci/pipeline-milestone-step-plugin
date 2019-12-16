@@ -69,7 +69,7 @@ public class MilestoneStepTest {
                         "milestone()\n" +
                         "echo 'Passed second milestone'\n" +
                         "milestone()\n" +
-                        "echo 'Passed third milestone'\n"));
+                        "echo 'Passed third milestone'\n", true));
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                 SemaphoreStep.waitForStart("inorder/1", b1);
                 WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -97,7 +97,7 @@ public class MilestoneStepTest {
                         "echo 'First milestone'\n" +
                         "semaphore 'wait'\n" +
                         "milestone()\n" +
-                        "echo 'Second milestone'\n"));
+                        "echo 'Second milestone'\n", true));
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                 SemaphoreStep.waitForStart("wait/1", b1);
                 WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -124,7 +124,7 @@ public class MilestoneStepTest {
                         "node {\n" +
                         "  echo 'First milestone'\n" +
                         "  semaphore 'wait'\n" +
-                        "}"));
+                        "}", true));
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                 SemaphoreStep.waitForStart("wait/1", b1);
                 WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -151,7 +151,7 @@ public class MilestoneStepTest {
                         "node {\n" +
                         "  echo 'First milestone'\n" +
                         "  semaphore 'wait'\n" +
-                        "}"));
+                        "}", true));
                 WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
                 SemaphoreStep.waitForStart("wait/1", b1);
                 WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
@@ -180,7 +180,7 @@ public class MilestoneStepTest {
                         "  }\n" +
                         "  milestone()\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 WorkflowRun b1 = story.j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
                 story.j.assertLogContains("Using a milestone step inside parallel is not allowed", b1);
 
@@ -192,7 +192,7 @@ public class MilestoneStepTest {
                         "    milestone()\n" +
                         "  }\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 WorkflowRun b2 = story.j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
                 story.j.assertLogContains("Using a milestone step inside parallel is not allowed", b2);
 
@@ -204,7 +204,7 @@ public class MilestoneStepTest {
                         "    echo 'Inside node'\n" +
                         "  }\n" +
                         "}\n" +
-                        "milestone()\n"));
+                        "milestone()\n", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
             }
         });
@@ -222,7 +222,7 @@ public class MilestoneStepTest {
                         "    echo 'In-node'\n" +
                         "  }\n" +
                         "  milestone 1\n" +
-                        "}"));
+                        "}", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
             }
         });
@@ -240,7 +240,7 @@ public class MilestoneStepTest {
                         "}\n" +
                         "milestone()\n" +
                         "milestone 5\n" +
-                        "milestone()"));
+                        "milestone()", true));
                 story.j.assertBuildStatusSuccess(p.scheduleBuild2(0));
 
                 p.setDefinition(new CpsFlowDefinition(
@@ -249,7 +249,7 @@ public class MilestoneStepTest {
                         "  milestone()\n" +
                         "}\n" +
                         "milestone()\n" +
-                        "milestone ordinal: 2")); // Invalid ordinal
+                        "milestone ordinal: 2", true)); // Invalid ordinal
                 story.j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
             }
         });
