@@ -297,6 +297,33 @@ public class MilestoneStepTest {
     }
 
     @Test
+    public void milestoneCancelResult() {
+        story.addStep(new Statement() {
+            @Override public void evaluate() throws Throwable {
+                WorkflowJob p = story.j.jenkins.createProject(WorkflowJob.class, "p");
+                p.setDefinition(new CpsFlowDefinition(
+                        "milestone ordinal: 0, result: 'UNSTABLE'\n" +
+                        "echo 'First milestone'\n" +
+                        "semaphore 'wait'\n" +
+                        "milestone()\n" +
+                        "echo 'Second milestone'\n", true));
+                WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/1", b1);
+                WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+                SemaphoreStep.waitForStart("wait/2", b2);
+                // Now both #1 and #2 passed milestone 1
+
+                // Let #2 continue so it goes away from milestone 1 (and passes milestone 2)
+                SemaphoreStep.success("wait/2", null);
+                story.j.waitForCompletion(b2);
+
+                // Once #2 continues and passes milestone 2 then #1 is automatically cancelled with status ABORTED
+                story.j.assertBuildStatus(Result.UNSTABLE, story.j.waitForCompletion(b1));
+            }
+        });
+    }
+
+    @Test
     public void configRoundtrip() {
         story.addStep(new Statement() {
             @Override public void evaluate() throws Throwable {

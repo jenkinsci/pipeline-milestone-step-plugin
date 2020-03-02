@@ -30,6 +30,7 @@ import javax.annotation.CheckForNull;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
+import hudson.model.Result;
 import hudson.model.Run;
 
 class Milestone {
@@ -38,6 +39,11 @@ class Milestone {
      * Milestone ordinal.
      */
     final Integer ordinal;
+
+    /**
+     * Superseded build result.
+     */
+    final Result result;
 
     /**
      * Numbers of builds that passed this milestone but haven't passed the next one.
@@ -50,12 +56,13 @@ class Milestone {
     @CheckForNull
     Integer lastBuild;
 
-    Milestone(Integer ordinal) {
+    Milestone(Integer ordinal, Result result) {
         this.ordinal = ordinal;
+        this.result = result;
     }
 
     @Override public String toString() {
-        return "Milestone[inSight=" + inSight + "]";
+        return "Milestone[ordinal=" + ordinal + ", inSight=" + inSight + ", " + result + "]";
     }
 
     public void pass(StepContext context, Run<?, ?> build) {

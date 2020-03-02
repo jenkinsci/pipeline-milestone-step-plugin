@@ -37,6 +37,7 @@ import org.kohsuke.stapler.DataBoundSetter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.Util;
+import hudson.model.Result;
 
 /**
  * This step can be used to grant:
@@ -58,6 +59,11 @@ public class MilestoneStep extends AbstractStepImpl {
      * Optional ordinal.
      */
     private Integer ordinal;
+
+    /**
+     * Optional result for superseded builds.
+     */
+    private Result result = Result.NOT_BUILT;
 
     /**
      * Optional unsafe.
@@ -91,6 +97,16 @@ public class MilestoneStep extends AbstractStepImpl {
 
     public boolean isUnsafe() {
         return unsafe;
+    }
+
+    @CheckForNull
+    public Result getResult() {
+        return result;
+    }
+
+    @DataBoundSetter
+    public void setResult(String result) {
+        this.result = Result.fromString(result);
     }
 
     @Extension

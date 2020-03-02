@@ -77,7 +77,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             node.addAction(new MilestoneAction(step.getLabel()));
         }
         int ordinal = processOrdinal();
-        tryToPass(run, getContext(), ordinal);
+        tryToPass(run, getContext(), ordinal, step.getResult());
         return null;
     }
 
@@ -129,10 +129,10 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         return ((MilestoneStep.DescriptorImpl) Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
     }
 
-    private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
-        LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
+    private synchronized void tryToPass(Run<?,?> run, StepContext context, int ordinal, Result result) throws IOException, InterruptedException {
+        LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {run, ordinal});
         println(context, "Trying to pass milestone " + ordinal);
-        Job<?,?> job = r.getParent();
+        Job<?,?> job = run.getParent();
         String jobName = job.getFullName();
         Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
         if (milestonesInJob == null) {
@@ -141,7 +141,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
         Milestone milestone = milestonesInJob.get(ordinal);
         if (milestone == null) {
-            milestone = new Milestone(ordinal);
+            milestone = new Milestone(ordinal, result);
             milestonesInJob.put(ordinal, milestone);
         }
 
@@ -152,31 +152,31 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             }
             Milestone milestone2 = entry.getValue();
             // The build is passing a milestone, so it's not visible to any previous milestone
-            if (milestone2.wentAway(r)) {
+            if (milestone2.wentAway(run)) {
                 // Ordering check
                 if(milestone2.ordinal >= ordinal) {
                     throw new AbortException(String.format("Unordered milestone. Found ordinal %s but %s (or bigger) was expected.", ordinal, milestone2.ordinal + 1));
                 }
                 // Cancel older builds (holding or waiting to enter)
-                cancelOldersInSight(milestone2, r);
+                cancelOldersInSight(milestone2, run);
             }
         }
 
         // checking order
-        if (milestone.lastBuild != null && r.getNumber() < milestone.lastBuild) {
+        if (milestone.lastBuild != null && run.getNumber() < milestone.lastBuild) {
             // cancel if it's older than the last one passing this milestone
-            cancel(context, milestone.lastBuild);
+            cancel(context, milestone.lastBuild, result);
         } else {
             // It's in-order, proceed
-            milestone.pass(context, r);
+            milestone.pass(context, run);
         }
         cleanUp(job, jobName);
         save();
     }
 
-    private static synchronized void exit(Run<?,?> r) {
-        LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {r, getMilestonesByOrdinalByJob()});
-        Job<?,?> job = r.getParent();
+    private static synchronized void exit(Run<?,?> run) {
+        LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {run, getMilestonesByOrdinalByJob()});
+        Job<?,?> job = run.getParent();
         String jobName = job.getFullName();
         Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
         if (milestonesInJob == null) {
@@ -184,9 +184,9 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
         boolean modified = false;
         for (Milestone milestone : milestonesInJob.values()) {
-            if (milestone.wentAway(r)) {
+            if (milestone.wentAway(run)) {
                 modified = true;
-                cancelOldersInSight(milestone, r);
+                cancelOldersInSight(milestone, run);
             }
         }
         if (modified) {
@@ -194,8 +194,8 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
 
         // Clean non-existing milestones
-        if (r instanceof FlowExecutionOwner.Executable) {
-            Integer lastMilestoneOrdinal = getLastOrdinalInBuild((FlowExecutionOwner.Executable) r);
+        if (run instanceof FlowExecutionOwner.Executable) {
+            Integer lastMilestoneOrdinal = getLastOrdinalInBuild((FlowExecutionOwner.Executable) run);
             if (lastMilestoneOrdinal == null) {
                 return;
             }
@@ -264,7 +264,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 Run<?, ?> olderInSightBuild = r.getParent().getBuildByNumber(inSightNumber);
                 Executor e = olderInSightBuild.getExecutor();
                 if (e != null) {
-                    e.interrupt(Result.NOT_BUILT, new CancelledCause(r.getExternalizableId()));
+                    e.interrupt(milestone.result, new CancelledCause(r.getExternalizableId()));
                 } else {
                     LOGGER.log(WARNING, "could not cancel an older flow because it has no assigned executor");
                 }
@@ -284,7 +284,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
     }
 
-    private static void cancel(StepContext context, Integer build) throws IOException, InterruptedException {
+    private static void cancel(StepContext context, Integer build, Result result) throws IOException, InterruptedException {
         if (context.isReady()) {
             println(context, "Canceled since build #" + build + " already got here");
             Run<?, ?> r = context.get(Run.class);
@@ -292,7 +292,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             if (r != null) { // it should be always non-null at this point, but let's do a defensive check
                 job = r.getParent().getFullName();
             }
-            throw new FlowInterruptedException(Result.NOT_BUILT, new CancelledCause(job + "#" + build));
+            throw new FlowInterruptedException(result, new CancelledCause(job + "#" + build));
         } else {
             LOGGER.log(WARNING, "cannot cancel dead #" + build);
         }
