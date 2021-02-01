@@ -12,7 +12,7 @@
     <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
     <name>Pipeline: Milestone Step</name>
-    <url>https://wiki.jenkins.io/display/JENKINS/Pipeline+Milestone+Step+Plugin</url>
+    <url>https://github.com/jenkinsci/pipeline-milestone-step-plugin</url>
     <description>Plugin that provides the milestone step</description>
 
     <licenses>
