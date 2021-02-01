@@ -1,5 +1,9 @@
 ## Changelog
 
+### 1.3.2 (Feb, 1, 2020)
+
+-   Migrate docs from Jenkins wiki to GitHub repository
+
 ### 1.3.1 (Mar 28, 2017)
 
 -   NPE in CleanupJobsOnDelete
