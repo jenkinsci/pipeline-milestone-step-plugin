@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<org.jenkinsci.plugins.pipeline.milestone.MilestoneStep_-DescriptorImpl>
+  <executionType>org.jenkinsci.plugins.pipeline.milestone.MilestoneStepExecution</executionType>
+  <milestonesByOrdinalByJob class="tree-map">
+    <entry>
+      <string>p</string>
+      <tree-map>
+        <entry>
+          <integer>0</integer>
+          <org.jenkinsci.plugins.pipeline.milestone.Milestone>
+            <ordinal>0</ordinal>
+            <inSight class="sorted-set"/>
+            <lastBuild>2</lastBuild>
+          </org.jenkinsci.plugins.pipeline.milestone.Milestone>
+        </entry>
+      </tree-map>
+    </entry>
+  </milestonesByOrdinalByJob>
+</org.jenkinsci.plugins.pipeline.milestone.MilestoneStep_-DescriptorImpl>

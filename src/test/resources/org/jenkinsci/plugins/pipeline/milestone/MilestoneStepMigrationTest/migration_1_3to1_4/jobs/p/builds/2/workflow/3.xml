@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<org.jenkinsci.plugins.workflow.support.storage.SimpleXStreamFlowNodeStorage_-Tag>
+  <node class="org.jenkinsci.plugins.workflow.cps.nodes.StepAtomNode">
+    <parentIds>
+      <string>2</string>
+    </parentIds>
+    <id>3</id>
+    <descriptorId>org.jenkinsci.plugins.pipeline.milestone.MilestoneStep</descriptorId>
+  </node>
+  <actions>
+    <org.jenkinsci.plugins.workflow.support.actions.LogActionImpl>
+      <charset>UTF-8</charset>
+    </org.jenkinsci.plugins.workflow.support.actions.LogActionImpl>
+    <org.jenkinsci.plugins.pipeline.milestone.MilestoneStepExecution_-OrdinalAction>
+      <ordinal>0</ordinal>
+    </org.jenkinsci.plugins.pipeline.milestone.MilestoneStepExecution_-OrdinalAction>
+    <org.jenkinsci.plugins.workflow.actions.TimingAction>
+      <startTime>1603369164491</startTime>
+    </org.jenkinsci.plugins.workflow.actions.TimingAction>
+  </actions>
+</org.jenkinsci.plugins.workflow.support.storage.SimpleXStreamFlowNodeStorage_-Tag>

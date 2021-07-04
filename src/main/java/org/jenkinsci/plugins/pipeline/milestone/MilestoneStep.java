@@ -148,7 +148,8 @@ public class MilestoneStep extends AbstractStepImpl {
     @Extension
     public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
-        private Map<String, Map<String, Milestone>> milestonesByGroupByJob;
+        private transient Map<String, Map<String, Milestone>> milestonesByGroupByJob;
+        private transient Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob;
 
         private static final Logger LOGGER = Logger.getLogger(MilestoneStep.class.getName());
 
@@ -173,7 +174,17 @@ public class MilestoneStep extends AbstractStepImpl {
             if (milestonesByGroupByJob == null) {
                 milestonesByGroupByJob = new TreeMap<String, Map<String, Milestone>>();
             }
-            LOGGER.log(Level.FINE, "load: {0}", milestonesByGroupByJob);
+            else {
+                this.milestonesByGroupByJob.forEach((j,m) -> m.forEach( (o,v) -> LOGGER.log(Level.INFO, "loaded milestone: {0}", o)));
+            }
+            LOGGER.log(Level.INFO, "load: {0}", milestonesByGroupByJob);
+        }
+
+        public Object readResolve() {
+            LOGGER.log(Level.INFO, "readResolve: {0}", this);
+            LOGGER.log(Level.INFO, "readResolve: this.milestonesByGroupByJob: {0}", this.milestonesByGroupByJob);
+            LOGGER.log(Level.INFO, "readResolve: this.milestonesByOrdinalByJob: {0}", this.milestonesByOrdinalByJob);
+            return this;
         }
 
         @Override
@@ -186,6 +197,9 @@ public class MilestoneStep extends AbstractStepImpl {
             return milestonesByGroupByJob;
         }
 
+        public Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob() {
+            return milestonesByOrdinalByJob;
+        }
 
     }
 

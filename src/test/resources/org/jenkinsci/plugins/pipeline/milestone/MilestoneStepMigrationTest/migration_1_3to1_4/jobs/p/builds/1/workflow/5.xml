@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<org.jenkinsci.plugins.workflow.support.storage.SimpleXStreamFlowNodeStorage_-Tag>
+  <node class="org.jenkinsci.plugins.workflow.cps.nodes.StepAtomNode">
+    <parentIds>
+      <string>4</string>
+    </parentIds>
+    <id>5</id>
+    <descriptorId>org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep</descriptorId>
+  </node>
+  <actions>
+    <org.jenkinsci.plugins.workflow.actions.TimingAction>
+      <startTime>1603369164465</startTime>
+    </org.jenkinsci.plugins.workflow.actions.TimingAction>
+  </actions>
+</org.jenkinsci.plugins.workflow.support.storage.SimpleXStreamFlowNodeStorage_-Tag>

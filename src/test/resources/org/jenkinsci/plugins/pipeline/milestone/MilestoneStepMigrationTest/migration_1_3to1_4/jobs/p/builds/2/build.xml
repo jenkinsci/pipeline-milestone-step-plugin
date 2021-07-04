@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-build>
+  <actions/>
+  <queueId>28</queueId>
+  <timestamp>1603369164460</timestamp>
+  <startTime>1603369164462</startTime>
+  <result>SUCCESS</result>
+  <duration>55</duration>
+  <keepLog>false</keepLog>
+  <execution class="org.jenkinsci.plugins.workflow.cps.CpsFlowExecution">
+    <result>SUCCESS</result>
+    <script>milestone()
+echo &apos;First milestone&apos;
+semaphore &apos;wait&apos;
+milestone()
+echo &apos;Second milestone&apos;
+</script>
+    <loadedScripts class="map"/>
+    <sandbox>true</sandbox>
+    <iota>8</iota>
+    <head>1:4</head>
+  </execution>
+  <checkouts class="hudson.util.PersistedList"/>
+</flow-build>
