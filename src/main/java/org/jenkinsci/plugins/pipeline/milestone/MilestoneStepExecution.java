@@ -292,7 +292,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
             if (r != null) { // it should be always non-null at this point, but let's do a defensive check
                 job = r.getParent().getFullName();
             }
-            throw new FlowInterruptedException(Result.NOT_BUILT, new CancelledCause(job + "#" + build));
+            throw new FlowInterruptedException(Result.NOT_BUILT, false, new CancelledCause(job + "#" + build));
         } else {
             LOGGER.log(WARNING, "cannot cancel dead #" + build);
         }
