@@ -27,7 +27,7 @@ import hudson.model.Run;
 import jenkins.model.CauseOfInterruption;
 import org.kohsuke.stapler.export.Exported;
 
-import javax.annotation.Nullable;
+import edu.umd.cs.findbugs.annotations.Nullable;
 
 /**
  * Records that a build was canceled because it reached a milestone but a newer build already passed it, or

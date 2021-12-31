@@ -26,7 +26,7 @@ package org.jenkinsci.plugins.pipeline.milestone;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.annotation.CheckForNull;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
