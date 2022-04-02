@@ -126,7 +126,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-        return ((MilestoneStep.DescriptorImpl) Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
+        return ((MilestoneStep.DescriptorImpl) Jenkins.get().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
     }
 
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
@@ -318,7 +318,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     }
 
     private static void save() {
-        Jenkins.getActiveInstance().getDescriptorOrDie(MilestoneStep.class).save();
+        Jenkins.get().getDescriptorOrDie(MilestoneStep.class).save();
     }
 
     @Extension
