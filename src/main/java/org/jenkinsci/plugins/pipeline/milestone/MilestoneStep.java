@@ -50,6 +50,11 @@ import hudson.Util;
 public class MilestoneStep extends AbstractStepImpl {
 
     /**
+     * Optional milestone group.
+     */
+    private String group = "default";
+
+    /**
      * Optional milestone label.
      */
     private String label;
@@ -79,6 +84,15 @@ public class MilestoneStep extends AbstractStepImpl {
         this.unsafe = unsafe;
     }
 
+    @DataBoundSetter
+    public void setGroup(String group) {
+        if(group == null || group.isEmpty() ) {
+            this.group = "default";
+        } else {
+            this.group = group;
+        }
+    }
+
     @CheckForNull
     public String getLabel() {
         return label;
@@ -93,10 +107,24 @@ public class MilestoneStep extends AbstractStepImpl {
         return unsafe;
     }
 
+    @CheckForNull
+    public String getGroup() {
+        return group;
+    }
+
+    @Override
+    public String toString() {
+        return "MilestoneStep["
+                +" group="+group
+                +", ordinal="+ordinal
+                +", label="+label
+                +"]";
+    }
+
     @Extension
     public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
 
-        private Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob;
+        private Map<String, Map<String, Milestone>> milestonesByGroupByJob;
 
         private static final Logger LOGGER = Logger.getLogger(MilestoneStep.class.getName());
 
@@ -118,20 +146,20 @@ public class MilestoneStep extends AbstractStepImpl {
         @Override
         public void load() {
             super.load();
-            if (milestonesByOrdinalByJob == null) {
-                milestonesByOrdinalByJob = new TreeMap<String, Map<Integer, Milestone>>();
+            if (milestonesByGroupByJob == null) {
+                milestonesByGroupByJob = new TreeMap<String, Map<String, Milestone>>();
             }
-            LOGGER.log(Level.FINE, "load: {0}", milestonesByOrdinalByJob);
+            LOGGER.log(Level.FINE, "load: {0}", milestonesByGroupByJob);
         }
 
         @Override
         public void save() {
             super.save();
-            LOGGER.log(Level.FINE, "save: {0}", milestonesByOrdinalByJob);
+            LOGGER.log(Level.FINE, "save: {0}", milestonesByGroupByJob);
         }
 
-        public Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-            return milestonesByOrdinalByJob;
+        public Map<String, Map<String, Milestone>> getMilestonesByGroupByJob() {
+            return milestonesByGroupByJob;
         }
 
     }
