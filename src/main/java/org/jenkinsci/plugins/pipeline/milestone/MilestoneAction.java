@@ -26,10 +26,15 @@ package org.jenkinsci.plugins.pipeline.milestone;
 import org.jenkinsci.plugins.workflow.actions.LabelAction;
 import org.jenkinsci.plugins.workflow.actions.StageAction;
 
+/**
+ * @deprecated Only for loading historical builds.
+ */
+@Deprecated
 class MilestoneAction extends LabelAction implements StageAction {
 
-    MilestoneAction(String label) {
-        super(label);
+    private MilestoneAction() {
+        super(null);
+        throw new AssertionError("no longer constructed");
     }
 
     @Override 
