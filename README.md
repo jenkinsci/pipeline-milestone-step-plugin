@@ -56,7 +56,7 @@ This examples are both valid:
 configure a reliable Continuous Delivery pipeline as both delivering
 latest code status and unique deployments are granted. There is an
 example of this pattern in the [Pipeline CD demo
-Jenkinsfile](https://github.com/jenkinsci/workflow-aggregator-plugin/blob/8a69bb4506d270c4a1fc58580519a0bcac1b8bce/demo/repo/Jenkinsfile).
+Jenkinsfile](https://github.com/jenkinsci/workflow-aggregator-plugin/blob/0c46fa697ffd8a1ca61b87d51ec91ea4a0746453/demo/repo/Jenkinsfile).
 
 **TIP 2**: retroactive builds abort, which is older builds being
 cancelled once a newer one passes a milestone that the older builds has
