@@ -40,6 +40,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import com.google.common.base.Predicate;
 import hudson.model.Item;
 import hudson.model.listeners.ItemListener;
+import org.jenkinsci.plugins.workflow.actions.LabelAction;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.graphanalysis.FlowScanningUtils;
@@ -74,7 +75,7 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
     @Override
     public Void run() throws Exception {
         if (step.getLabel() != null) {
-            node.addAction(new MilestoneAction(step.getLabel()));
+            node.addAction(new LabelAction(step.getLabel()));
         }
         int ordinal = processOrdinal();
         tryToPass(run, getContext(), ordinal);
