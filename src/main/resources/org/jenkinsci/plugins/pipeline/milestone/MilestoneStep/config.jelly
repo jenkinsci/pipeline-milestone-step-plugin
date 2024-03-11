@@ -34,4 +34,10 @@ THE SOFTWARE.
     <f:entry field="unsafe" title="Unsafe">
         <f:checkbox />
     </f:entry>
+    <f:entry field="group" title="Milestone group">
+        <f:textbox/>
+    </f:entry>
+    <f:entry field="policy" title="Policy to handle old builds passed milestone">
+        <f:select/>
+    </f:entry>
 </j:jelly>

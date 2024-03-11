@@ -1,0 +1,8 @@
+<p>
+    An optional policy to handle older builds in other milestones. Default - keep them running.
+</p>
+<p>
+    Older builds will not proceed (they are aborted) if a newer one already entered the milestone
+    When a build passes a milestone, any older build that passed the previous milestone - but not this one - is aborted.
+Once a build passes the milestone, it will be never aborted by a newer build that didn't pass the milestone yet unless user set policy to cancel such old builds
+</p>

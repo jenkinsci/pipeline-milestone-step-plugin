@@ -40,6 +40,11 @@ class Milestone {
     final Integer ordinal;
 
     /**
+     * milestone group.
+     */
+    final String group;
+
+    /**
      * Numbers of builds that passed this milestone but haven't passed the next one.
      */
     final Set<Integer> inSight = new TreeSet<Integer>();
@@ -50,12 +55,16 @@ class Milestone {
     @CheckForNull
     Integer lastBuild;
 
-    Milestone(Integer ordinal) {
+    Milestone(Integer ordinal, String group) {
         this.ordinal = ordinal;
+        this.group = group;
     }
 
     @Override public String toString() {
-        return "Milestone[inSight=" + inSight + "]";
+        return "Milestone[inSight=" + inSight
+                +", group="+group
+                +", ordinal="+ordinal
+                +", lastBuild="+lastBuild+"]";
     }
 
     public void pass(StepContext context, Run<?, ?> build) {
@@ -64,14 +73,23 @@ class Milestone {
     }
 
     /**
-     * Called when a build passes the next milestone.
+     * Called when a build passes the next milestone. remove build number if it was in sight
      *
      * @param build the build passing the next milestone.
-     * @return true if the build was in sight (exists in inSight), false otherwise.
      */
-    public boolean wentAway(Run<?, ?> build) {
+    public synchronized void wentAway(Run<?, ?> build) {
         if (inSight.contains(build.getNumber())) {
             inSight.remove(build.getNumber()); // XSTR-757
+        }
+    }
+    /**
+     * Check if build is in sight
+     *
+     * @param build build to look for
+     * @return true if the build is in sight (exists in inSight), false otherwise.
+     */
+    public synchronized boolean isInSight(Run<?, ?> build) {
+        if (inSight.contains(build.getNumber())) {
             return true;
         } else {
             return false;

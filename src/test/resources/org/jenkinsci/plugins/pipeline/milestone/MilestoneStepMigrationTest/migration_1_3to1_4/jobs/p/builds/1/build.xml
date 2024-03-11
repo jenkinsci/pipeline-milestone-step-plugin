@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-build>
+  <actions>
+    <jenkins.model.InterruptedBuildAction>
+      <causes class="com.google.common.collect.ImmutableList">
+        <org.jenkinsci.plugins.pipeline.milestone.CancelledCause>
+          <newerBuild>p#2</newerBuild>
+          <displayName>p#2</displayName>
+        </org.jenkinsci.plugins.pipeline.milestone.CancelledCause>
+      </causes>
+    </jenkins.model.InterruptedBuildAction>
+  </actions>
+  <queueId>27</queueId>
+  <timestamp>1603369164430</timestamp>
+  <startTime>1603369164431</startTime>
+  <result>NOT_BUILT</result>
+  <duration>83</duration>
+  <keepLog>false</keepLog>
+  <execution class="org.jenkinsci.plugins.workflow.cps.CpsFlowExecution">
+    <result>NOT_BUILT</result>
+    <script>milestone()
+echo &apos;First milestone&apos;
+semaphore &apos;wait&apos;
+milestone()
+echo &apos;Second milestone&apos;
+</script>
+    <loadedScripts class="map"/>
+    <sandbox>true</sandbox>
+    <iota>8</iota>
+    <head>1:8</head>
+  </execution>
+  <checkouts class="hudson.util.PersistedList"/>
+</flow-build>
