@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition">
+    <script>milestone()
+echo &apos;First milestone&apos;
+semaphore &apos;wait&apos;
+milestone()
+echo &apos;Second milestone&apos;
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+</flow-definition>

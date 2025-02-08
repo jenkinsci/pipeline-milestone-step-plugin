@@ -37,7 +37,7 @@ class MilestoneAction extends LabelAction implements StageAction {
         throw new AssertionError("no longer constructed");
     }
 
-    @Override 
+    @Override
     public String getStageName() {
         return getDisplayName();
     }
