@@ -63,7 +63,7 @@ public abstract class MilestoneStorage implements ExtensionPoint {
     /**
      * Cancels the given run due to another run passing a milestone.
      * @param run the run to cancel
-     * @param referenceRun the run that caused the cancellation.
+     * @param externalizableId the externalizable id for the run causing the cancellation.
      */
     public final void cancel(Run<?, ?> run, String externalizableId) {
         LOGGER.fine(() -> "Cancelling " + run);
