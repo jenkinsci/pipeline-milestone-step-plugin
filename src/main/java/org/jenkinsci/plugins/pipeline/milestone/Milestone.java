@@ -46,13 +46,7 @@ class Milestone {
     /**
      * Numbers of builds that passed this milestone but haven't passed the next one.
      */
-    final Set<Integer> inSight = new TreeSet<Integer>();
-
-    /**
-     * Last build that passed through the milestone, or null if none passed yet.
-     */
-    @CheckForNull
-    Integer lastBuild;
+    final Set<Integer> inSight = new TreeSet<>();
 
     Milestone(Integer ordinal) {
         this.ordinal = ordinal;
@@ -63,7 +57,6 @@ class Milestone {
     }
 
     public void pass(StepContext context, Run<?, ?> build) {
-        lastBuild = build.getNumber();
         inSight.add(build.getNumber());
     }
 
