@@ -24,19 +24,23 @@
 package org.jenkinsci.plugins.pipeline.milestone;
 
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.Extension;
+import hudson.Util;
+import hudson.model.Run;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.jenkinsci.plugins.workflow.steps.AbstractStepDescriptorImpl;
-import org.jenkinsci.plugins.workflow.steps.AbstractStepImpl;
+import org.jenkinsci.plugins.workflow.graph.FlowNode;
+import org.jenkinsci.plugins.workflow.steps.Step;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-
-import edu.umd.cs.findbugs.annotations.CheckForNull;
-import hudson.Extension;
-import hudson.Util;
 
 /**
  * This step can be used to grant:
@@ -47,17 +51,20 @@ import hudson.Util;
  *   <li>Once a build passes the milestone, it will be never aborted by a newer build that didn't pass the milestone yet.</li>
  * </ol>
  */
-public class MilestoneStep extends AbstractStepImpl {
+public class MilestoneStep extends Step {
+    private static final Logger LOGGER = Logger.getLogger(MilestoneStep.class.getName());
 
     /**
      * Optional milestone label.
      */
+    @CheckForNull
     private String label;
 
     /**
      * Optional ordinal.
      */
-    private Integer ordinal;
+    @CheckForNull
+    private final Integer ordinal;
 
     /**
      * Optional unsafe.
@@ -65,7 +72,7 @@ public class MilestoneStep extends AbstractStepImpl {
     private boolean unsafe;
 
     @DataBoundConstructor
-    public MilestoneStep(Integer ordinal) {
+    public MilestoneStep(@CheckForNull Integer ordinal) {
         this.ordinal = ordinal;
     }
 
@@ -93,16 +100,26 @@ public class MilestoneStep extends AbstractStepImpl {
         return unsafe;
     }
 
+    @Override
+    public StepExecution start(StepContext context) throws Exception {
+        return new MilestoneStepExecution(context, label, ordinal, unsafe);
+    }
+
     @Extension
-    public static final class DescriptorImpl extends AbstractStepDescriptorImpl {
-
-        private Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob;
-
-        private static final Logger LOGGER = Logger.getLogger(MilestoneStep.class.getName());
+    public static final class DescriptorImpl extends StepDescriptor {
+        /**
+         * @deprecated Replaced by {@link MilestoneJobAction}.
+         */
+        @Deprecated
+        private transient Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob;
 
         public DescriptorImpl() {
-            super(MilestoneStepExecution.class);
             load();
+        }
+
+        @Override
+        public Set<? extends Class<?>> getRequiredContext() {
+            return Set.of(FlowNode.class, Run.class);
         }
 
         @Override
@@ -111,6 +128,7 @@ public class MilestoneStep extends AbstractStepImpl {
         }
 
         @Override
+        @NonNull
         public String getDisplayName() {
             return "The milestone step forces all builds to go through in order";
         }
@@ -119,7 +137,7 @@ public class MilestoneStep extends AbstractStepImpl {
         public void load() {
             super.load();
             if (milestonesByOrdinalByJob == null) {
-                milestonesByOrdinalByJob = new TreeMap<String, Map<Integer, Milestone>>();
+                milestonesByOrdinalByJob = new TreeMap<>();
             }
             LOGGER.log(Level.FINE, "load: {0}", milestonesByOrdinalByJob);
         }
@@ -130,10 +148,9 @@ public class MilestoneStep extends AbstractStepImpl {
             LOGGER.log(Level.FINE, "save: {0}", milestonesByOrdinalByJob);
         }
 
+        @Deprecated
         public Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
             return milestonesByOrdinalByJob;
         }
-
     }
-
 }

@@ -32,6 +32,10 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 import hudson.model.Run;
 
+/**
+ * @deprecated No longer used. Only kept for backward compatibility.
+ */
+@Deprecated
 class Milestone {
 
     /**
