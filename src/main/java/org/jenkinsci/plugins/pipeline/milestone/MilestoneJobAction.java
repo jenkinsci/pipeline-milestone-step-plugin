@@ -8,6 +8,7 @@ import hudson.model.Run;
 import java.io.Serial;
 import java.util.Map;
 import java.util.TreeMap;
+import net.jcip.annotations.GuardedBy;
 
 /**
  * Stores passed milestones for currently running builds.
@@ -17,6 +18,7 @@ public class MilestoneJobAction extends InvisibleAction {
      * Do not persist, live data is rebuilt by {@link MilestoneStepExecution.FlowExecutionListenerImpl}.
      */
     @NonNull
+    @GuardedBy("job")
     private transient Map<Integer, Integer> milestones = new TreeMap<>();
 
     @Serial
@@ -28,11 +30,13 @@ public class MilestoneJobAction extends InvisibleAction {
     @NonNull
     public static Map<Integer, Integer> store(@NonNull Run<?,?> run, @CheckForNull Integer ordinal) {
         var job = run.getParent();
-        var action = ensure(job);
-        var buildNumber = run.getNumber();
-        action.milestones.put(buildNumber, ordinal);
-        job.addOrReplaceAction(action);
-        return new TreeMap<>(action.milestones);
+        synchronized (job) {
+            var action = ensure(job);
+            var buildNumber = run.getNumber();
+            action.milestones.put(buildNumber, ordinal);
+            job.addOrReplaceAction(action);
+            return new TreeMap<>(action.milestones);
+        }
     }
 
     @NonNull
@@ -47,9 +51,11 @@ public class MilestoneJobAction extends InvisibleAction {
     @NonNull
     public static MilestoneStorage.ClearResult clear(@NonNull Run<?,?> run) {
         var job = run.getParent();
-        var action = ensure(job);
-        var previousMilestone = action.milestones.remove(run.getNumber());
-        job.addOrReplaceAction(action);
-        return new MilestoneStorage.ClearResult(previousMilestone, new TreeMap<>(action.milestones));
+        synchronized (job) {
+            var action = ensure(job);
+            var previousMilestone = action.milestones.remove(run.getNumber());
+            job.addOrReplaceAction(action);
+            return new MilestoneStorage.ClearResult(previousMilestone, new TreeMap<>(action.milestones));
+        }
     }
 }
