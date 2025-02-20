@@ -87,8 +87,11 @@ public abstract class MilestoneStorage implements ExtensionPoint {
         var result = clear(run);
         LOGGER.finest(() -> "milestones after completion: " + result.milestones);
         if (result.lastMilestoneBeforeCompletion != null) {
+            LOGGER.finest(() -> "Build" + run + " last milestone before completion: " + result.lastMilestoneBeforeCompletion);
             var buildsToCancel = getBuildsToCancel(run.getNumber(), Integer.MAX_VALUE, result.milestones);
             cancel(buildsToCancel, run);
+        } else {
+            LOGGER.finest(() -> "Build " + run + " was not using milestones, nothing to cancel");
         }
     }
 
@@ -132,6 +135,11 @@ public abstract class MilestoneStorage implements ExtensionPoint {
         }
     }
 
+    /**
+     * Given a reference run, cancels all the given builds of the same job with the given build numbers.
+     * @param buildNumbers The build numbers of runs to cancel.
+     * @param referenceRun The run that is causing the cancellation.
+     */
     protected abstract void cancel(Set<Integer> buildNumbers, Run<?, ?> referenceRun);
 
     /**
