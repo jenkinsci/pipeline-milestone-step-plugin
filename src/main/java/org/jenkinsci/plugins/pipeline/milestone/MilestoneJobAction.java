@@ -8,7 +8,6 @@ import hudson.model.Run;
 import java.io.Serial;
 import java.util.Map;
 import java.util.TreeMap;
-import net.jcip.annotations.GuardedBy;
 
 /**
  * Stores passed milestones for currently running builds.
@@ -18,7 +17,6 @@ public class MilestoneJobAction extends InvisibleAction {
      * Do not persist, live data is rebuilt by {@link MilestoneStepExecution.FlowExecutionListenerImpl}.
      */
     @NonNull
-    @GuardedBy("this")
     private transient Map<Integer, Integer> milestones = new TreeMap<>();
 
     @Serial
