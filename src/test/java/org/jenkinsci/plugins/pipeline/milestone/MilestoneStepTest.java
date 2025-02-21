@@ -1,7 +1,6 @@
 package org.jenkinsci.plugins.pipeline.milestone;
 
 import hudson.model.Result;
-import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -73,6 +72,27 @@ public class MilestoneStepTest {
             r.assertBuildStatusSuccess(r.waitForCompletion(b2));
             SemaphoreStep.success("blocked/1", null);
             r.assertBuildStatusSuccess(r.waitForCompletion(b1));
+        });
+    }
+
+    @Test
+    public void reachSameMilestone() throws Throwable {
+        story.then(r -> {
+            WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition(
+                    """
+                                    milestone()
+                                    semaphore 'inorder'
+                                    milestone()
+                        """, true));
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/1", b1);
+            WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/2", b2);
+            SemaphoreStep.success("inorder/1", null);
+            r.assertBuildStatusSuccess(r.waitForCompletion(b1));
+            SemaphoreStep.success("inorder/2", null);
+            r.assertBuildStatusSuccess(r.waitForCompletion(b2));
         });
     }
 

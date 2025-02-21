@@ -30,7 +30,7 @@ public abstract class MilestoneStorage implements ExtensionPoint {
     public static Set<Integer> getBuildsToCancel(int buildNumber, @CheckForNull Integer ordinal, @NonNull Map<Integer, Integer> milestones) {
         return milestones.entrySet().stream()
                 .filter(entry -> entry.getKey() < buildNumber)
-                .filter(entry -> entry.getValue() == null || (ordinal != null && entry.getValue() <= ordinal))
+                .filter(entry -> entry.getValue() == null || (ordinal != null && entry.getValue() < ordinal))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
     }
