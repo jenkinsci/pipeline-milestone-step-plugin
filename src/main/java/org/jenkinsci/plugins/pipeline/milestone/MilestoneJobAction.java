@@ -58,4 +58,11 @@ public class MilestoneJobAction extends InvisibleAction {
             return new MilestoneStorage.ClearResult(previousMilestone, new TreeMap<>(action.milestones));
         }
     }
+
+    @Override
+    public String toString() {
+        return "MilestoneJobAction{" +
+                "milestones=" + milestones +
+                '}';
+    }
 }

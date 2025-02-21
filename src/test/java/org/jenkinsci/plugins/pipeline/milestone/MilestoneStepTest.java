@@ -1,7 +1,9 @@
 package org.jenkinsci.plugins.pipeline.milestone;
 
 import hudson.model.Result;
+import java.util.Objects;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.cps.SnippetizerTester;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -16,6 +18,7 @@ import org.jvnet.hudson.test.JenkinsSessionRule;
 import org.jvnet.hudson.test.LoggerRule;
 
 public class MilestoneStepTest {
+    private static final Logger LOGGER = Logger.getLogger(MilestoneStepTest.class.getName());
 
     @ClassRule
     public static BuildWatcher buildWatcher = new BuildWatcher();
@@ -101,6 +104,38 @@ public class MilestoneStepTest {
             SemaphoreStep.success("inorder/1", null);
             r.assertBuildStatus(Result.NOT_BUILT, r.waitForCompletion(b1));
             r.assertLogNotContains("Passed first milestone", b1);
+        });
+    }
+
+    @Test
+    public void reloadJobWhileRunning() throws Throwable {
+        story.then(r -> {
+            WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition(
+                    """
+                            echo 'Before milestone'
+                            milestone()
+                            echo 'Passed first milestone'
+                            milestone()
+                            semaphore 'inorder'
+                            echo 'Passed second milestone'
+                            milestone()
+                            echo 'Passed third milestone'
+                        """, true));
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/1", b1);
+            WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/2", b2);
+            // Simulate a project reload.
+            p.load();
+            // Let #2 continue so it finish before #1
+            SemaphoreStep.success("inorder/2", null);
+            r.assertBuildStatusSuccess(r.waitForCompletion(b2));
+
+            // Let #1 continue, so it must be early cancelled since #2 already passed through milestone 1
+            SemaphoreStep.success("inorder/1", null);
+            r.assertBuildStatus(Result.NOT_BUILT, r.waitForCompletion(b1));
+            r.assertLogNotContains("Passed second milestone", b1);
         });
     }
 
