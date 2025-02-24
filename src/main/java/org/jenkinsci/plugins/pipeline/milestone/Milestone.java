@@ -23,6 +23,7 @@
  */
 package org.jenkinsci.plugins.pipeline.milestone;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Set;
 import java.util.TreeSet;
@@ -35,13 +36,20 @@ class Milestone {
     /**
      * Milestone ordinal.
      */
-    @SuppressFBWarnings("UUF_UNUSED_FIELD")
+    @SuppressFBWarnings(value = "UUF_UNUSED_FIELD", justification = "Serial compatibility")
     final Integer ordinal;
 
     /**
      * Numbers of builds that passed this milestone but haven't passed the next one.
      */
     final Set<Integer> inSight = new TreeSet<>();
+
+    /**
+     * Last build that passed through the milestone, or null if none passed yet.
+     */
+    @CheckForNull
+    @SuppressFBWarnings(value = "UUF_UNUSED_FIELD", justification = "Serial compatibility")
+    Integer lastBuild;
 
     Milestone(Integer ordinal) {
         throw new AssertionError("Milestone class is deprecated and should not be used.");
