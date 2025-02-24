@@ -82,7 +82,7 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
                     Integer key = entry.getKey();
                     result.put(key, buildNumber);
                 }
-            } else if (entry.getKey() > buildNumber && ((ordinal == null && entry.getValue() != null) || (ordinal != null  && entry.getValue() >= ordinal))) {
+            } else if (entry.getKey() > buildNumber && ((ordinal == null && entry.getValue() != null) || (ordinal != null  && entry.getValue() != null && entry.getValue() >= ordinal))) {
                 // Defensive, this should never happen.
                 result.put(buildNumber, entry.getKey());
             }
