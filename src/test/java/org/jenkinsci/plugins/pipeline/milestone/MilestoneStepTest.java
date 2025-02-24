@@ -28,6 +28,37 @@ public class MilestoneStepTest {
     @Rule
     public LoggerRule loggerRule = new LoggerRule().recordPackage(MilestoneStep.class, Level.FINE);
 
+    @Test
+    public void buildsMustPassThroughInOrder() throws Throwable {
+        story.then(r -> {
+            WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+            p.setDefinition(new CpsFlowDefinition(
+                    """
+                            semaphore 'inorder'
+                            echo 'Before milestone'
+                            milestone()
+                            echo 'Passed first milestone'
+                            milestone()
+                            echo 'Passed second milestone'
+                            milestone()
+                            echo 'Passed third milestone'
+                        """, true));
+            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/1", b1);
+            WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+            SemaphoreStep.waitForStart("inorder/2", b2);
+
+            // Let #2 continue so it finish before #1
+            SemaphoreStep.success("inorder/2", null);
+            r.assertBuildStatusSuccess(r.waitForCompletion(b2));
+
+            // Let #1 continue, so it must be early cancelled since #2 already passed through milestone 1
+            SemaphoreStep.success("inorder/1", null);
+            r.assertBuildStatus(Result.NOT_BUILT, r.waitForCompletion(b1));
+            r.assertLogNotContains("Passed first milestone", b1);
+        });
+    }
+
     /**
      * Sanity test for {@link MilestoneStepExecution.Listener}.
      */
@@ -93,37 +124,6 @@ public class MilestoneStepTest {
             r.assertBuildStatusSuccess(r.waitForCompletion(b1));
             SemaphoreStep.success("inorder/2", null);
             r.assertBuildStatusSuccess(r.waitForCompletion(b2));
-        });
-    }
-
-    @Test
-    public void buildsMustPassThroughInOrder() throws Throwable {
-        story.then(r -> {
-            WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
-            p.setDefinition(new CpsFlowDefinition(
-                    """
-                            semaphore 'inorder'
-                            echo 'Before milestone'
-                            milestone()
-                            echo 'Passed first milestone'
-                            milestone()
-                            echo 'Passed second milestone'
-                            milestone()
-                            echo 'Passed third milestone'
-                        """, true));
-            WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
-            SemaphoreStep.waitForStart("inorder/1", b1);
-            WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
-            SemaphoreStep.waitForStart("inorder/2", b2);
-
-            // Let #2 continue so it finish before #1
-            SemaphoreStep.success("inorder/2", null);
-            r.assertBuildStatusSuccess(r.waitForCompletion(b2));
-
-            // Let #1 continue, so it must be early cancelled since #2 already passed through milestone 1
-            SemaphoreStep.success("inorder/1", null);
-            r.assertBuildStatus(Result.NOT_BUILT, r.waitForCompletion(b1));
-            r.assertLogNotContains("Passed first milestone", b1);
         });
     }
 
