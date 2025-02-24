@@ -23,24 +23,19 @@
  */
 package org.jenkinsci.plugins.pipeline.milestone;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Set;
 import java.util.TreeSet;
-
-import edu.umd.cs.findbugs.annotations.CheckForNull;
-
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-
-import hudson.model.Run;
 
 /**
  * @deprecated No longer used. Only kept for backward compatibility.
  */
 @Deprecated
 class Milestone {
-
     /**
      * Milestone ordinal.
      */
+    @SuppressFBWarnings("UUF_UNUSED_FIELD")
     final Integer ordinal;
 
     /**
@@ -49,29 +44,7 @@ class Milestone {
     final Set<Integer> inSight = new TreeSet<>();
 
     Milestone(Integer ordinal) {
-        this.ordinal = ordinal;
+        throw new AssertionError("Milestone class is deprecated and should not be used.");
     }
 
-    @Override public String toString() {
-        return "Milestone[inSight=" + inSight + "]";
-    }
-
-    public void pass(StepContext context, Run<?, ?> build) {
-        inSight.add(build.getNumber());
-    }
-
-    /**
-     * Called when a build passes the next milestone.
-     *
-     * @param build the build passing the next milestone.
-     * @return true if the build was in sight (exists in inSight), false otherwise.
-     */
-    public boolean wentAway(Run<?, ?> build) {
-        if (inSight.contains(build.getNumber())) {
-            inSight.remove(build.getNumber()); // XSTR-757
-            return true;
-        } else {
-            return false;
-        }
-    }
 }

@@ -108,7 +108,7 @@ public class MilestoneStep extends Step {
     @Extension
     public static final class DescriptorImpl extends StepDescriptor {
         /**
-         * @deprecated Replaced by {@link MilestoneJobAction}.
+         * @deprecated Replaced by {@link DefaultMilestoneStorage#milestonesPerJob}.
          */
         @Deprecated
         private transient Map<String, Map<Integer, Milestone>> milestonesByOrdinalByJob;

@@ -28,6 +28,7 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.AbortException;
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.model.InvisibleAction;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -35,8 +36,11 @@ import hudson.model.listeners.RunListener;
 import java.io.IOException;
 import java.io.Serial;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.actions.LabelAction;
 import org.jenkinsci.plugins.workflow.flow.FlowExecution;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionListener;
@@ -60,6 +64,20 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
         this.label = label;
         this.ordinal = ordinal;
         this.unsafe = unsafe;
+    }
+
+    /**
+     * @param buildNumber The build number currently querying for builds to cancel
+     * @param ordinal The ordinal the build just passed. {@code null} means it just started.
+     * @param milestones A map keyed by build numbers recording their current milestone.
+     * @return A subset of build numbers among the given milestones eligible for cancellation.
+     */
+    public static Set<Integer> getBuildsToCancel(int buildNumber, @CheckForNull Integer ordinal, @NonNull Map<Integer, Integer> milestones) {
+        return milestones.entrySet().stream()
+                .filter(entry -> entry.getKey() < buildNumber)
+                .filter(entry -> entry.getValue() == null || (ordinal != null && entry.getValue() < ordinal))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -123,9 +141,13 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
     }
 
     private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) {
-        LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
+        LOGGER.log(Level.FINE, () -> "build " + r + " trying to pass milestone " + ordinal);
         println(context, "Trying to pass milestone " + ordinal);
-        MilestoneStorage.get().put(r, ordinal);
+        MilestoneStorage milestoneStorage = getStorage();
+        var milestones = milestoneStorage.store(r, ordinal);
+        LOGGER.fine(() -> "build " + r + " : milestones after put -> " + milestones);
+        var buildsToCancel = getBuildsToCancel(r.getNumber(), ordinal, milestones);
+        milestoneStorage.cancel(buildsToCancel, r);
     }
 
     private static void println(StepContext context, String message) {
@@ -145,13 +167,23 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
         @Override
         public void onStarted(Run<?, ?> r, TaskListener listener) {
             if (isPipelineRun(r)) {
-                MilestoneStorage.get().start(r);
+                MilestoneStorage milestoneStorage = getStorage();
+                milestoneStorage.store(r, null);
             }
         }
 
         @Override public void onCompleted(Run<?,?> r, @NonNull TaskListener listener) {
             if (isPipelineRun(r)) {
-                MilestoneStorage.get().complete(r);
+                MilestoneStorage milestoneStorage = getStorage();
+                var result = milestoneStorage.clear(r);
+                MilestoneStorage.LOGGER.finest(() -> "milestones after completion: " + result.milestones());
+                if (result.lastMilestoneBeforeCompletion() != null) {
+                    MilestoneStorage.LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
+                    var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
+                    milestoneStorage.cancel(buildsToCancel, r);
+                } else {
+                    MilestoneStorage.LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
+                }
             }
         }
 
@@ -173,7 +205,8 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
                 if (executable instanceof Run<?,?> run) {
                     LOGGER.fine(() -> "Executable " + executable + " is a run");
                     var ordinalAction = getLatestOrdinalAction(execution.getCurrentHeads());
-                    MilestoneStorage.get().resume(run, ordinalAction == null ? null : ordinalAction.ordinal);
+                    MilestoneStorage milestoneStorage = getStorage();
+                    milestoneStorage.store(run, ordinalAction == null ? null : ordinalAction.ordinal);
                 } else {
                     LOGGER.fine(() -> "Executable " + executable + " is not a run");
                 }
@@ -186,4 +219,11 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /**
+     * @return the active implementation
+     */
+    @NonNull
+    private static MilestoneStorage getStorage() {
+        return ExtensionList.lookupFirst(MilestoneStorage.class);
+    }
 }
