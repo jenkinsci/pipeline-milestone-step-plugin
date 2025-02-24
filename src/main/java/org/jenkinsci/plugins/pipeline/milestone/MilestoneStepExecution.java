@@ -166,15 +166,9 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
     private static void cancelAll(Job<?,?> job, Map<Integer, Integer> buildsToCancel) {
         LOGGER.fine(() -> "Cancelling " + buildsToCancel);
         for (var buildEntry : buildsToCancel.entrySet()) {
-            var buildNumber = buildEntry.getKey();
-            Run<?, ?> build = job.getBuildByNumber(buildNumber);
-            if (build != null) {
-                var referenceBuildNumber = buildEntry.getValue();
-                Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
-                getStorage().cancel(job, buildNumber, referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
-            } else {
-                LOGGER.fine(() -> "Ignoring missing " + job.getFullName() + "#" + buildNumber);
-            }
+            var referenceBuildNumber = buildEntry.getValue();
+            Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
+            getStorage().cancel(job, buildEntry.getKey(), referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
         }
     }
 
