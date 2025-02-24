@@ -2,7 +2,6 @@ package org.jenkinsci.plugins.pipeline.milestone;
 
 import hudson.model.Result;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.cps.SnippetizerTester;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -17,8 +16,6 @@ import org.jvnet.hudson.test.JenkinsSessionRule;
 import org.jvnet.hudson.test.LoggerRule;
 
 public class MilestoneStepTest {
-    private static final Logger LOGGER = Logger.getLogger(MilestoneStepTest.class.getName());
-
     @ClassRule
     public static BuildWatcher buildWatcher = new BuildWatcher();
 
