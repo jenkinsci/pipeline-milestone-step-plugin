@@ -157,7 +157,25 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
         var milestones = milestoneStorage.store(r, ordinal);
         LOGGER.fine(() -> "build " + r + " : milestones after put -> " + milestones);
         var buildsToCancel = getBuildsToCancel(r.getNumber(), ordinal, milestones);
-        milestoneStorage.cancel(r.getParent(), buildsToCancel);
+        cancelAll(r.getParent(), buildsToCancel);
+    }
+
+    /**
+     * Cancel all runs with the given numbers
+     */
+    private static void cancelAll(Job<?,?> job, Map<Integer, Integer> buildsToCancel) {
+        LOGGER.fine(() -> "Cancelling " + buildsToCancel);
+        for (var buildEntry : buildsToCancel.entrySet()) {
+            var buildNumber = buildEntry.getKey();
+            Run<?, ?> build = job.getBuildByNumber(buildNumber);
+            if (build != null) {
+                var referenceBuildNumber = buildEntry.getValue();
+                Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
+                getStorage().cancel(job, buildNumber, referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
+            } else {
+                LOGGER.fine(() -> "Ignoring missing " + job.getFullName() + "#" + buildNumber);
+            }
+        }
     }
 
     private static void println(StepContext context, String message) {
@@ -190,7 +208,7 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
                 if (result.lastMilestoneBeforeCompletion() != null) {
                     LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
                     var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
-                    milestoneStorage.cancel(r.getParent(), buildsToCancel);
+                    cancelAll(r.getParent(), buildsToCancel);
                 } else {
                     LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
                 }

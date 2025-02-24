@@ -7,11 +7,8 @@ import hudson.model.Executor;
 import hudson.model.Job;
 import hudson.model.Result;
 import hudson.model.Run;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.logging.Logger;
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.ProtectedExternally;
 
 /**
  * Manages persistence of active milestones and cancellation of older builds as needed.
@@ -52,10 +49,16 @@ public interface MilestoneStorage extends ExtensionPoint {
 
     /**
      * Cancels the given run due to another run passing a milestone.
-     * @param run the run to cancel
+     * @param job the job for which the run is getting cancelled
+     * @param buildNumber the build number of the run to cancel
      * @param externalizableId the externalizable id for the run causing the cancellation.
      */
-    default void cancel(Run<?, ?> run, String externalizableId) {
+    default void cancel(Job<?, ?> job, int buildNumber, @NonNull String externalizableId) {
+        Run<?, ?> run = job.getBuildByNumber(buildNumber);
+        if (run == null) {
+            LOGGER.fine(() -> job.getFullName() + "#" + buildNumber + " not found");
+            return;
+        }
         LOGGER.fine(() -> "Cancelling " + run);
         Executor e = run.getExecutor();
         if (e != null) {
@@ -64,13 +67,4 @@ public interface MilestoneStorage extends ExtensionPoint {
             LOGGER.warning(() -> "could not cancel an older flow because it has no assigned executor");
         }
     }
-
-    /**
-     * Cancels all given builds of the same job with the given build numbers.
-     * @param job The job to cancel builds for.
-     * @param buildsToCancel a map of build numbers to reference run to cancel.
-     */
-    @Restricted(ProtectedExternally.class)
-    void cancel(@NonNull Job<?,?> job, @NonNull Map<Integer, Integer> buildsToCancel);
-
 }

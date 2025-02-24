@@ -58,23 +58,4 @@ public class DefaultMilestoneStorage implements MilestoneStorage {
         LOGGER.log(Level.FINE, () -> "Clearing milestones for " + job.getFullName());
         milestonesPerJob.remove(job);
     }
-
-    /**
-     * Cancel all runs with the given numbers
-     */
-    @Override
-    public void cancel(Job<?,?> job, Map<Integer, Integer> buildsToCancel) {
-        LOGGER.fine(() -> "Cancelling " + buildsToCancel);
-        for (var buildEntry : buildsToCancel.entrySet()) {
-            var buildNumber = buildEntry.getKey();
-            Run<?, ?> build = job.getBuildByNumber(buildNumber);
-            if (build != null) {
-                var referenceBuildNumber = buildEntry.getValue();
-                Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
-                cancel(build, referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
-            } else {
-                LOGGER.fine(() -> "Ignoring missing " + job.getFullName() + "#" + buildNumber);
-            }
-        }
-    }
 }
