@@ -4,9 +4,10 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.ExtensionPoint;
 import hudson.model.Executor;
+import hudson.model.Job;
 import hudson.model.Result;
 import hudson.model.Run;
-import java.util.Set;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.logging.Logger;
 import org.kohsuke.accmod.Restricted;
@@ -37,6 +38,12 @@ public interface MilestoneStorage extends ExtensionPoint {
     ClearResult clear(@NonNull Run<?,?> run);
 
     /**
+     * Called when a job gets deleted, allowing the implementation to perform required cleanup.
+     * @param job The job that was deleted.
+     */
+    void onDeletedJob(@NonNull Job<?, ?> job);
+
+    /**
      * Result of {@link #clear(Run)}.
      * @param lastMilestoneBeforeCompletion the last milestone the cleared run reached before completion
      * @param milestones the currently known milestones for other running builds of the same job.
@@ -59,11 +66,11 @@ public interface MilestoneStorage extends ExtensionPoint {
     }
 
     /**
-     * Given a reference run, cancels all the given builds of the same job with the given build numbers.
-     * @param buildNumbers The build numbers of runs to cancel.
-     * @param referenceRun The run that is causing the cancellation.
+     * Cancels all given builds of the same job with the given build numbers.
+     * @param job The job to cancel builds for.
+     * @param buildsToCancel a map of build numbers to reference run to cancel.
      */
     @Restricted(ProtectedExternally.class)
-    void cancel(Set<Integer> buildNumbers, Run<?, ?> referenceRun);
+    void cancel(@NonNull Job<?,?> job, @NonNull Map<Integer, Integer> buildsToCancel);
 
 }

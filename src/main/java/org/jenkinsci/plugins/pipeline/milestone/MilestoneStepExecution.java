@@ -30,17 +30,19 @@ import hudson.AbortException;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.InvisibleAction;
+import hudson.model.Item;
+import hudson.model.Job;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.RunListener;
 import java.io.IOException;
 import java.io.Serial;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.actions.LabelAction;
 import org.jenkinsci.plugins.workflow.flow.FlowExecution;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionListener;
@@ -72,12 +74,20 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
      * @param milestones A map keyed by build numbers recording their current milestone.
      * @return A subset of build numbers among the given milestones eligible for cancellation.
      */
-    public static Set<Integer> getBuildsToCancel(int buildNumber, @CheckForNull Integer ordinal, @NonNull Map<Integer, Integer> milestones) {
-        return milestones.entrySet().stream()
-                .filter(entry -> entry.getKey() < buildNumber)
-                .filter(entry -> entry.getValue() == null || (ordinal != null && entry.getValue() < ordinal))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
+    public static Map<Integer, Integer> getBuildsToCancel(int buildNumber, @CheckForNull Integer ordinal, @NonNull Map<Integer, Integer> milestones) {
+        Map<Integer, Integer> result = new HashMap<>();
+        for (Map.Entry<Integer, Integer> entry : milestones.entrySet()) {
+            if (entry.getKey() < buildNumber) {
+                if (entry.getValue() == null || (ordinal != null && entry.getValue() < ordinal)) {
+                    Integer key = entry.getKey();
+                    result.put(key, buildNumber);
+                }
+            } else if (entry.getKey() > buildNumber && ((ordinal == null && entry.getValue() != null) || (ordinal != null  && entry.getValue() >= ordinal))) {
+                // Defensive, this should never happen.
+                result.put(buildNumber, entry.getKey());
+            }
+        }
+        return result;
     }
 
     @Override
@@ -147,7 +157,7 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
         var milestones = milestoneStorage.store(r, ordinal);
         LOGGER.fine(() -> "build " + r + " : milestones after put -> " + milestones);
         var buildsToCancel = getBuildsToCancel(r.getNumber(), ordinal, milestones);
-        milestoneStorage.cancel(buildsToCancel, r);
+        milestoneStorage.cancel(r.getParent(), buildsToCancel);
     }
 
     private static void println(StepContext context, String message) {
@@ -180,7 +190,7 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
                 if (result.lastMilestoneBeforeCompletion() != null) {
                     MilestoneStorage.LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
                     var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
-                    milestoneStorage.cancel(buildsToCancel, r);
+                    milestoneStorage.cancel(r.getParent(), buildsToCancel);
                 } else {
                     MilestoneStorage.LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
                 }
@@ -189,6 +199,17 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
 
         private boolean isPipelineRun(Run<?, ?> r) {
             return r instanceof FlowExecutionOwner.Executable executable && executable.asFlowExecutionOwner() != null;
+        }
+    }
+
+
+    @Extension
+    public static final class ItemListenerImpl extends ItemListener {
+        @Override
+        public void onDeleted(Item item) {
+            if (item instanceof Job<?,?> job) {
+                getStorage().onDeletedJob(job);
+            }
         }
     }
 

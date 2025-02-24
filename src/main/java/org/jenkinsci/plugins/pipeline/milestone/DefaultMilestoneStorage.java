@@ -7,12 +7,11 @@ import hudson.model.Job;
 import hudson.model.Run;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -54,16 +53,25 @@ public class DefaultMilestoneStorage implements MilestoneStorage {
         return new ClearResult(previousMilestone.get(), Collections.unmodifiableSortedMap(newMilestones == null ? new TreeMap<>() : newMilestones));
     }
 
+    @Override
+    public void onDeletedJob(@NonNull Job<?, ?> job) {
+        LOGGER.log(Level.FINE, () -> "Clearing milestones for " + job.getFullName());
+        milestonesPerJob.remove(job);
+    }
+
     /**
      * Cancel all runs with the given numbers
      */
-    public void cancel(Set<Integer> buildsToCancel, Run<?, ?> referenceRun) {
-        LOGGER.fine(() -> "Cancelling " + buildsToCancel + " (reference run :" + referenceRun + ")");
-        Job<?, ?> job = referenceRun.getParent();
-        for (Integer buildNumber : buildsToCancel) {
+    @Override
+    public void cancel(Job<?,?> job, Map<Integer, Integer> buildsToCancel) {
+        LOGGER.fine(() -> "Cancelling " + buildsToCancel);
+        for (var buildEntry : buildsToCancel.entrySet()) {
+            var buildNumber = buildEntry.getKey();
             Run<?, ?> build = job.getBuildByNumber(buildNumber);
             if (build != null) {
-                cancel(build, referenceRun.getExternalizableId());
+                var referenceBuildNumber = buildEntry.getValue();
+                Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
+                cancel(build, referenceRun == null ? "#" + referenceBuildNumber : referenceRun.getExternalizableId());
             } else {
                 LOGGER.fine(() -> "Ignoring missing " + job.getFullName() + "#" + buildNumber);
             }
