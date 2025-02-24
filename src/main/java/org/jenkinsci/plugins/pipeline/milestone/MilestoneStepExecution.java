@@ -186,13 +186,13 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
             if (isPipelineRun(r)) {
                 MilestoneStorage milestoneStorage = getStorage();
                 var result = milestoneStorage.clear(r);
-                MilestoneStorage.LOGGER.finest(() -> "milestones after completion: " + result.milestones());
+                LOGGER.finest(() -> "milestones after completion: " + result.milestones());
                 if (result.lastMilestoneBeforeCompletion() != null) {
-                    MilestoneStorage.LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
+                    LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
                     var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
                     milestoneStorage.cancel(r.getParent(), buildsToCancel);
                 } else {
-                    MilestoneStorage.LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
+                    LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
                 }
             }
         }
