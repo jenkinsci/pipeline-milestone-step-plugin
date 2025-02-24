@@ -71,7 +71,7 @@ public class DefaultMilestoneStorage implements MilestoneStorage {
             if (build != null) {
                 var referenceBuildNumber = buildEntry.getValue();
                 Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
-                cancel(build, referenceRun == null ? "#" + referenceBuildNumber : referenceRun.getExternalizableId());
+                cancel(build, referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
             } else {
                 LOGGER.fine(() -> "Ignoring missing " + job.getFullName() + "#" + buildNumber);
             }
