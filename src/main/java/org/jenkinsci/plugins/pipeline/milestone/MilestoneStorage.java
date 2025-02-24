@@ -7,7 +7,7 @@ import hudson.model.Executor;
 import hudson.model.Job;
 import hudson.model.Result;
 import hudson.model.Run;
-import java.util.SortedMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -23,7 +23,7 @@ public interface MilestoneStorage extends ExtensionPoint {
      * @param ordinal the ordinal of the milestone gettting passed. May be {@code null} to record build starting.
      * @return The list of milestones for the job after storing the new one.
      */
-    SortedMap<Integer, Integer> store(@NonNull Run<?,?> run, @CheckForNull Integer ordinal);
+    Map<Integer, Integer> store(@NonNull Run<?,?> run, @CheckForNull Integer ordinal);
 
 
     /**
@@ -45,7 +45,7 @@ public interface MilestoneStorage extends ExtensionPoint {
      * @param lastMilestoneBeforeCompletion the last milestone the cleared run reached before completion
      * @param milestones the currently known milestones for other running builds of the same job.
      */
-    record ClearResult(Integer lastMilestoneBeforeCompletion, SortedMap<Integer, Integer> milestones) {}
+    record ClearResult(Integer lastMilestoneBeforeCompletion, Map<Integer, Integer> milestones) {}
 
     /**
      * Cancels the given run due to another run passing a milestone.

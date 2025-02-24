@@ -6,8 +6,8 @@ import hudson.Extension;
 import hudson.model.Job;
 import hudson.model.Run;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,11 +24,11 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 public class DefaultMilestoneStorage implements MilestoneStorage {
     private static final Logger LOGGER = Logger.getLogger(DefaultMilestoneStorage.class.getName());
 
-    private final Map<Job<?,?>, SortedMap<Integer, Integer>> milestonesPerJob = Collections.synchronizedMap(new WeakHashMap<>());
+    private final Map<Job<?,?>, Map<Integer, Integer>> milestonesPerJob = Collections.synchronizedMap(new WeakHashMap<>());
 
     @Override
-    public SortedMap<Integer, Integer> store(@NonNull Run<?, ?> run, @CheckForNull Integer ordinal) {
-        return Collections.unmodifiableSortedMap(milestonesPerJob.compute(run.getParent(), (job, milestones) -> {
+    public Map<Integer, Integer> store(@NonNull Run<?, ?> run, @CheckForNull Integer ordinal) {
+        return Collections.unmodifiableMap(milestonesPerJob.compute(run.getParent(), (job, milestones) -> {
             if (milestones == null) {
                 milestones = new TreeMap<>();
             }
@@ -50,7 +50,7 @@ public class DefaultMilestoneStorage implements MilestoneStorage {
             }
             return milestones;
         });
-        return new ClearResult(previousMilestone.get(), Collections.unmodifiableSortedMap(newMilestones == null ? new TreeMap<>() : newMilestones));
+        return new ClearResult(previousMilestone.get(), Collections.unmodifiableMap(newMilestones == null ? new HashMap<>() : newMilestones));
     }
 
     @Override
