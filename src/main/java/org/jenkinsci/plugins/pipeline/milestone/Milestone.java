@@ -23,58 +23,36 @@
  */
 package org.jenkinsci.plugins.pipeline.milestone;
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Set;
 import java.util.TreeSet;
 
-import edu.umd.cs.findbugs.annotations.CheckForNull;
-
-import org.jenkinsci.plugins.workflow.steps.StepContext;
-
-import hudson.model.Run;
-
+/**
+ * @deprecated No longer used. Only kept for backward compatibility.
+ */
+@Deprecated
 class Milestone {
-
     /**
      * Milestone ordinal.
      */
+    @SuppressFBWarnings(value = "UUF_UNUSED_FIELD", justification = "Serial compatibility")
     final Integer ordinal;
 
     /**
      * Numbers of builds that passed this milestone but haven't passed the next one.
      */
-    final Set<Integer> inSight = new TreeSet<Integer>();
+    final Set<Integer> inSight = new TreeSet<>();
 
     /**
      * Last build that passed through the milestone, or null if none passed yet.
      */
     @CheckForNull
+    @SuppressFBWarnings(value = "UUF_UNUSED_FIELD", justification = "Serial compatibility")
     Integer lastBuild;
 
     Milestone(Integer ordinal) {
-        this.ordinal = ordinal;
+        throw new AssertionError("Milestone class is deprecated and should not be used.");
     }
 
-    @Override public String toString() {
-        return "Milestone[inSight=" + inSight + "]";
-    }
-
-    public void pass(StepContext context, Run<?, ?> build) {
-        lastBuild = build.getNumber();
-        inSight.add(build.getNumber());
-    }
-
-    /**
-     * Called when a build passes the next milestone.
-     *
-     * @param build the build passing the next milestone.
-     * @return true if the build was in sight (exists in inSight), false otherwise.
-     */
-    public boolean wentAway(Run<?, ?> build) {
-        if (inSight.contains(build.getNumber())) {
-            inSight.remove(build.getNumber()); // XSTR-757
-            return true;
-        } else {
-            return false;
-        }
-    }
 }

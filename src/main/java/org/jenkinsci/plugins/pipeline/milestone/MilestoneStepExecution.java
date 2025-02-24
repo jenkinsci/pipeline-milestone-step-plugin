@@ -23,83 +23,108 @@
  */
 package org.jenkinsci.plugins.pipeline.milestone;
 
-import static java.util.logging.Level.WARNING;
-
+import com.google.common.base.Predicate;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.AbortException;
+import hudson.Extension;
+import hudson.ExtensionList;
+import hudson.model.InvisibleAction;
+import hudson.model.Item;
+import hudson.model.Job;
+import hudson.model.Run;
+import hudson.model.TaskListener;
+import hudson.model.listeners.ItemListener;
+import hudson.model.listeners.RunListener;
 import java.io.IOException;
-import java.util.Iterator;
+import java.io.Serial;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import edu.umd.cs.findbugs.annotations.CheckForNull;
-
-import com.google.common.base.Predicate;
-import hudson.model.Item;
-import hudson.model.listeners.ItemListener;
 import org.jenkinsci.plugins.workflow.actions.LabelAction;
+import org.jenkinsci.plugins.workflow.flow.FlowExecution;
+import org.jenkinsci.plugins.workflow.flow.FlowExecutionListener;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
 import org.jenkinsci.plugins.workflow.graph.FlowNode;
 import org.jenkinsci.plugins.workflow.graphanalysis.FlowScanningUtils;
 import org.jenkinsci.plugins.workflow.graphanalysis.LinearScanner;
-import org.jenkinsci.plugins.workflow.steps.AbstractSynchronousStepExecution;
-import org.jenkinsci.plugins.workflow.steps.FlowInterruptedException;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
-import org.jenkinsci.plugins.workflow.steps.StepContextParameter;
+import org.jenkinsci.plugins.workflow.steps.SynchronousStepExecution;
 
-import com.google.inject.Inject;
+public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
 
-import hudson.AbortException;
-import hudson.Extension;
-import hudson.model.Executor;
-import hudson.model.InvisibleAction;
-import hudson.model.Job;
-import hudson.model.Result;
-import hudson.model.Run;
-import hudson.model.TaskListener;
-import hudson.model.listeners.RunListener;
-import jenkins.model.Jenkins;
-
-public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Void> {
-
+    private static final Predicate<FlowNode> ORDINAL_MATCHER = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
     private static final Logger LOGGER = Logger.getLogger(MilestoneStepExecution.class.getName());
+    private final String label;
+    private final Integer ordinal;
+    private final boolean unsafe;
 
-    @Inject(optional=true) private transient MilestoneStep step;
-    @StepContextParameter private transient Run<?,?> run;
-    @StepContextParameter private transient FlowNode node;
-    @StepContextParameter private transient TaskListener listener;
+    public MilestoneStepExecution(@NonNull StepContext context, @CheckForNull String label, @CheckForNull Integer ordinal, boolean unsafe) {
+        super(context);
+        this.label = label;
+        this.ordinal = ordinal;
+        this.unsafe = unsafe;
+    }
+
+    /**
+     * @param buildNumber The build number currently querying for builds to cancel
+     * @param ordinal The ordinal the build just passed. {@code null} means it just started.
+     * @param milestones A map keyed by build numbers recording their current milestone.
+     * @return A subset of build numbers among the given milestones eligible for cancellation.
+     */
+    public static Map<Integer, Integer> getBuildsToCancel(int buildNumber, @CheckForNull Integer ordinal, @NonNull Map<Integer, Integer> milestones) {
+        Map<Integer, Integer> result = new HashMap<>();
+        for (Map.Entry<Integer, Integer> entry : milestones.entrySet()) {
+            if (entry.getKey() < buildNumber) {
+                if (entry.getValue() == null || (ordinal != null && entry.getValue() < ordinal)) {
+                    Integer key = entry.getKey();
+                    result.put(key, buildNumber);
+                }
+            } else if (entry.getKey() > buildNumber && ((ordinal == null && entry.getValue() != null) || (ordinal != null  && entry.getValue() != null && entry.getValue() >= ordinal))) {
+                // Defensive, this should never happen.
+                result.put(buildNumber, entry.getKey());
+            }
+        }
+        return result;
+    }
 
     @Override
     public Void run() throws Exception {
-        if (step.getLabel() != null) {
-            node.addAction(new LabelAction(step.getLabel()));
+        if (label != null) {
+            getContext().get(FlowNode.class).addAction(new LabelAction(label));
         }
-        int ordinal = processOrdinal();
-        tryToPass(run, getContext(), ordinal);
+        tryToPass(getContext().get(Run.class), getContext(), processOrdinal());
         return null;
     }
 
     /**
      * Gets the next ordinal and throw {@link AbortException} the milestone lives inside a parallel step branch.
      */
-    private synchronized int processOrdinal() throws AbortException {
+    private synchronized int processOrdinal() throws IOException, InterruptedException {
+        var node = getContext().get(FlowNode.class);
         List<FlowNode> heads = node.getExecution().getCurrentHeads();
-        if (heads.size() > 1 && !step.isUnsafe()) {  // TA-DA!  We're inside a parallel, which is forbidden.
+        if (heads.size() > 1 && !unsafe) {  // TA-DA!  We're inside a parallel, which is forbidden.
             throw new AbortException("Using a milestone step inside parallel is not allowed");
         }
+        var nextOrdinal = getNextOrdinal(getLatestOrdinalAction(heads));
+        node.addAction(new OrdinalAction(nextOrdinal));
+        return nextOrdinal;
+    }
 
-        Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
-        FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads.get(0), ordinalMatcher);
-        OrdinalAction action = lastOrdinalNode != null ? lastOrdinalNode.getAction(OrdinalAction.class) : null;
+    private static OrdinalAction getLatestOrdinalAction(List<FlowNode> heads) {
+        FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads.get(0), ORDINAL_MATCHER);
+        return lastOrdinalNode != null ? lastOrdinalNode.getAction(OrdinalAction.class) : null;
+    }
+
+    private int getNextOrdinal(@CheckForNull OrdinalAction action) throws AbortException {
         Integer previousOrdinal = action != null ? action.ordinal : null;
 
         // If step.ordinal is set then use it and check order with the previous one
         // Otherwise use calculated ordinal (previousOrdinal + 1)
         int nextOrdinal = 0;
-        Integer stepOrdinal = step.getOrdinal();
+        Integer stepOrdinal = ordinal;
         if (stepOrdinal != null) {
             if (previousOrdinal != null) {
                 if (previousOrdinal >= stepOrdinal) {
@@ -115,7 +140,6 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
                 nextOrdinal = previousOrdinal + 1;
             } // else next ordinal 0
         }
-        node.addAction(new OrdinalAction(nextOrdinal));
         return nextOrdinal;
     }
 
@@ -126,150 +150,25 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         }
     }
 
-    private static Map<String, Map<Integer, Milestone>> getMilestonesByOrdinalByJob() {
-        return ((MilestoneStep.DescriptorImpl) Jenkins.get().getDescriptorOrDie(MilestoneStep.class)).getMilestonesByOrdinalByJob();
-    }
-
-    private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) throws IOException, InterruptedException {
-        LOGGER.log(Level.FINE, "build {0} trying to pass milestone {1}", new Object[] {r, ordinal});
+    private synchronized void tryToPass(Run<?,?> r, StepContext context, int ordinal) {
+        LOGGER.log(Level.FINE, () -> "build " + r + " trying to pass milestone " + ordinal);
         println(context, "Trying to pass milestone " + ordinal);
-        Job<?,?> job = r.getParent();
-        String jobName = job.getFullName();
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
-        if (milestonesInJob == null) {
-            milestonesInJob = new TreeMap<Integer,Milestone>();
-            getMilestonesByOrdinalByJob().put(jobName, milestonesInJob);
-        }
-        Milestone milestone = milestonesInJob.get(ordinal);
-        if (milestone == null) {
-            milestone = new Milestone(ordinal);
-            milestonesInJob.put(ordinal, milestone);
-        }
-
-        // Defensive order check and cancel older builds behind
-        for (Map.Entry<Integer, Milestone> entry : milestonesInJob.entrySet()) {
-            if (entry.getKey().equals(ordinal)) {
-                continue;
-            }
-            Milestone milestone2 = entry.getValue();
-            // The build is passing a milestone, so it's not visible to any previous milestone
-            if (milestone2.wentAway(r)) {
-                // Ordering check
-                if(milestone2.ordinal >= ordinal) {
-                    throw new AbortException(String.format("Unordered milestone. Found ordinal %s but %s (or bigger) was expected.", ordinal, milestone2.ordinal + 1));
-                }
-                // Cancel older builds (holding or waiting to enter)
-                cancelOldersInSight(milestone2, r);
-            }
-        }
-
-        // checking order
-        if (milestone.lastBuild != null && r.getNumber() < milestone.lastBuild) {
-            // cancel if it's older than the last one passing this milestone
-            cancel(context, milestone.lastBuild);
-        } else {
-            // It's in-order, proceed
-            milestone.pass(context, r);
-        }
-        cleanUp(job, jobName);
-        save();
-    }
-
-    private static synchronized void exit(Run<?,?> r) {
-        LOGGER.log(Level.FINE, "exit {0}: {1}", new Object[] {r, getMilestonesByOrdinalByJob()});
-        Job<?,?> job = r.getParent();
-        String jobName = job.getFullName();
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
-        if (milestonesInJob == null) {
-            return;
-        }
-        boolean modified = false;
-        for (Milestone milestone : milestonesInJob.values()) {
-            if (milestone.wentAway(r)) {
-                modified = true;
-                cancelOldersInSight(milestone, r);
-            }
-        }
-        if (modified) {
-            cleanUp(job, jobName);
-        }
-
-        // Clean non-existing milestones
-        if (r instanceof FlowExecutionOwner.Executable) {
-            Integer lastMilestoneOrdinal = getLastOrdinalInBuild((FlowExecutionOwner.Executable) r);
-            if (lastMilestoneOrdinal == null) {
-                return;
-            }
-            Milestone m = getFirstWithoutInSight(milestonesInJob);
-            while (m != null && milestonesInJob.size() - 1 > lastMilestoneOrdinal) {
-                modified = true;
-                milestonesInJob.remove(m.ordinal);
-                m = getFirstWithoutInSight(milestonesInJob);
-            }
-            if (milestonesInJob.isEmpty()) {
-                modified = true;
-                getMilestonesByOrdinalByJob().remove(jobName);
-            }
-        }
-
-        if (modified) {
-            save();
-        }
-    }
-
-    @CheckForNull
-    private static Integer getLastOrdinalInBuild(FlowExecutionOwner.Executable r) {
-        int lastMilestoneOrdinal = 0;
-        FlowExecutionOwner owner = r.asFlowExecutionOwner();
-        if (owner == null) {
-            return null;
-        }
-        try {
-            List<FlowNode> heads = owner.get().getCurrentHeads();
-            if (heads.size() == 1) {
-                Predicate<FlowNode> ordinalMatcher = FlowScanningUtils.hasActionPredicate(OrdinalAction.class);
-                FlowNode lastOrdinalNode = new LinearScanner().findFirstMatch(heads.get(0), ordinalMatcher);
-                OrdinalAction action = lastOrdinalNode != null ? lastOrdinalNode.getAction(OrdinalAction.class) : null;
-                return action != null ? action.ordinal : null;
-            }
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to traverse flow graph to search the last milestone ordinal", e);
-        }
-        return lastMilestoneOrdinal;
+        MilestoneStorage milestoneStorage = getStorage();
+        var milestones = milestoneStorage.store(r, ordinal);
+        LOGGER.fine(() -> "build " + r + " : milestones after put -> " + milestones);
+        var buildsToCancel = getBuildsToCancel(r.getNumber(), ordinal, milestones);
+        cancelAll(r.getParent(), buildsToCancel);
     }
 
     /**
-     * Returns the first milestone without any build in sight or null if not found.
+     * Cancel all runs with the given numbers
      */
-    @CheckForNull
-    private static Milestone getFirstWithoutInSight(Map<Integer, Milestone> milestones) {
-        for (Entry<Integer, Milestone> entry : milestones.entrySet()) {
-            Milestone m = entry.getValue();
-            if (m.inSight.isEmpty()) {
-                return m;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Cancels any build older than the given one in sight of the milestone.
-     *
-     * @param r the build which is going away of the given milestone
-     * @param milestone the milestone which r is leaving (because it entered the next milestone or finished).
-     */
-    private static void cancelOldersInSight(Milestone milestone, Run<?, ?> r) {
-        // Cancel any older build in sight of the milestone
-        for (Integer inSightNumber : milestone.inSight) {
-            if (r.getNumber() > inSightNumber) {
-                Run<?, ?> olderInSightBuild = r.getParent().getBuildByNumber(inSightNumber);
-                Executor e = olderInSightBuild.getExecutor();
-                if (e != null) {
-                    e.interrupt(Result.NOT_BUILT, new CancelledCause(r.getExternalizableId()));
-                } else {
-                    LOGGER.log(WARNING, "could not cancel an older flow because it has no assigned executor");
-                }
-            }
+    private static void cancelAll(Job<?,?> job, Map<Integer, Integer> buildsToCancel) {
+        LOGGER.fine(() -> "Cancelling " + buildsToCancel);
+        for (var buildEntry : buildsToCancel.entrySet()) {
+            var referenceBuildNumber = buildEntry.getValue();
+            Run<?, ?> referenceRun = job.getBuildByNumber(referenceBuildNumber);
+            getStorage().cancel(job, buildEntry.getKey(), referenceRun == null ? job.getFullName() + "#" + referenceBuildNumber : referenceRun.getExternalizableId());
         }
     }
 
@@ -281,80 +180,83 @@ public class MilestoneStepExecution extends AbstractSynchronousStepExecution<Voi
         try {
             context.get(TaskListener.class).getLogger().println(message);
         } catch (Exception x) {
-            LOGGER.log(WARNING, "failed to print message to dead " + context, x);
+            LOGGER.log(Level.WARNING, x, () -> "failed to print message to dead " + context);
         }
-    }
-
-    private static void cancel(StepContext context, Integer build) throws IOException, InterruptedException {
-        if (context.isReady()) {
-            println(context, "Canceled since build #" + build + " already got here");
-            Run<?, ?> r = context.get(Run.class);
-            String job = "";
-            if (r != null) { // it should be always non-null at this point, but let's do a defensive check
-                job = r.getParent().getFullName();
-            }
-            throw new FlowInterruptedException(Result.NOT_BUILT, new CancelledCause(job + "#" + build));
-        } else {
-            LOGGER.log(WARNING, "cannot cancel dead #" + build);
-        }
-    }
-
-    private static void cleanUp(Job<?,?> job, String jobName) {
-        Map<Integer, Milestone> milestonesInJob = getMilestonesByOrdinalByJob().get(jobName);
-        assert milestonesInJob != null;
-        Iterator<Entry<Integer, Milestone>> it = milestonesInJob.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, Milestone> entry = it.next();
-            Set<Integer> inSight = entry.getValue().inSight;
-            Iterator<Integer> it2 = inSight.iterator();
-            while (it2.hasNext()) {
-                Integer number = it2.next();
-                if (job.getBuildByNumber(number) == null) {
-                    // Deleted at some point but did not properly clean up from exit(…).
-                    LOGGER.log(WARNING, "Cleaning up apparently deleted {0}#{1}", new Object[] {jobName, number});
-                    it2.remove();
-                }
-            }
-        }
-    }
-
-    private static void save() {
-        Jenkins.get().getDescriptorOrDie(MilestoneStep.class).save();
     }
 
     @Extension
     public static final class Listener extends RunListener<Run<?,?>> {
-        @Override public void onCompleted(Run<?,?> r, TaskListener listener) {
-            if (!(r instanceof FlowExecutionOwner.Executable) || ((FlowExecutionOwner.Executable) r).asFlowExecutionOwner() == null) {
-                return;
-            }
-            exit(r);
-        }
-    }
-
-    /**
-     * Clean up tracked jobs on deleted.
-     */
-    @Extension
-    public static class CleanupJobsOnDelete extends ItemListener {
-
         @Override
-        public void onDeleted(Item item) {
-            if (item instanceof Job) {
-                String jobName = item.getFullName();
-                Map<Integer, Milestone> job = getMilestonesByOrdinalByJob().get(jobName);
-                if (job != null) {
-                    remove(jobName);
+        public void onStarted(Run<?, ?> r, TaskListener listener) {
+            if (isPipelineRun(r)) {
+                MilestoneStorage milestoneStorage = getStorage();
+                milestoneStorage.store(r, null);
+            }
+        }
+
+        @Override public void onCompleted(Run<?,?> r, @NonNull TaskListener listener) {
+            if (isPipelineRun(r)) {
+                MilestoneStorage milestoneStorage = getStorage();
+                var result = milestoneStorage.clear(r);
+                LOGGER.finest(() -> "milestones after completion: " + result.milestones());
+                if (result.lastMilestoneBeforeCompletion() != null) {
+                    LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
+                    var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
+                    cancelAll(r.getParent(), buildsToCancel);
+                } else {
+                    LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
                 }
             }
         }
 
-        private synchronized void remove(String jobName) {
-            getMilestonesByOrdinalByJob().remove(jobName);
-            save();
+        private boolean isPipelineRun(Run<?, ?> r) {
+            return r instanceof FlowExecutionOwner.Executable executable && executable.asFlowExecutionOwner() != null;
         }
     }
 
+
+    @Extension
+    public static final class ItemListenerImpl extends ItemListener {
+        @Override
+        public void onDeleted(Item item) {
+            if (item instanceof Job<?,?> job) {
+                getStorage().onDeletedJob(job);
+            }
+        }
+    }
+
+    /**
+     * Listens to pipeline resume, and let {@link MilestoneStorage} know the latest persisted milestone.
+     */
+    @Extension
+    public static final class FlowExecutionListenerImpl extends FlowExecutionListener {
+        @Override
+        public void onResumed(@NonNull FlowExecution execution) {
+            try {
+                LOGGER.finest(() -> "Resuming " + execution);
+                var executable = execution.getOwner().getExecutable();
+                if (executable instanceof Run<?,?> run) {
+                    LOGGER.fine(() -> "Executable " + executable + " is a run");
+                    var ordinalAction = getLatestOrdinalAction(execution.getCurrentHeads());
+                    MilestoneStorage milestoneStorage = getStorage();
+                    milestoneStorage.store(run, ordinalAction == null ? null : ordinalAction.ordinal);
+                } else {
+                    LOGGER.fine(() -> "Executable " + executable + " is not a run");
+                }
+            } catch (IOException e) {
+               LOGGER.log(Level.WARNING, e, () -> "Unable to look up executable from " + execution);
+            }
+        }
+    }
+
+    @Serial
     private static final long serialVersionUID = 1L;
 
+    /**
+     * @return the active implementation
+     */
+    @NonNull
+    private static MilestoneStorage getStorage() {
+        return ExtensionList.lookupFirst(MilestoneStorage.class);
+    }
 }

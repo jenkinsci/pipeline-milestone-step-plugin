@@ -31,7 +31,7 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 
 /**
  * Records that a build was canceled because it reached a milestone but a newer build already passed it, or
- * a newer build {@link Milestone#wentAway(Run)} from the last milestone the build passed.
+ * a newer build from the last milestone the build passed.
  */
 public final class CancelledCause extends CauseOfInterruption {
 
