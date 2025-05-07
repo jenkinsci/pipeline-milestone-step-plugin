@@ -65,7 +65,7 @@ public class CleaupJobsTest {
         LogRecorder recorder = new LogRecorder("recorder");
         LogRecorderManager mgr = j.jenkins.getLog();
         LogRecorder.Target t = new LogRecorder.Target(ItemListener.class.getName(), Level.ALL);
-        recorder.targets.add(t);
+        recorder.getLoggers().add(t);
         recorder.save();
         t.enable();
         mgr.logRecorders.put("recorder", recorder);
