@@ -440,8 +440,10 @@ public class MilestoneStepTest {
         WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait_a/1", b1);
         
-        // Let #1 continue
+        // Let #1 continue until the the second milestone
         SemaphoreStep.success("wait_a/1", null);
+        SemaphoreStep.waitForStart("wait_b/1", b1);
+
         WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
         SemaphoreStep.waitForStart("wait_a/2", b2);        
         
