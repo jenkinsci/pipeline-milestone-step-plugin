@@ -423,4 +423,39 @@ public class MilestoneStepTest {
             r.assertLogNotContains("Passed first milestone", b1);
         });
     }
+
+    @Issue("JENKINS-75668")
+    @Test
+    public void olderBuildsAtLaterMilestonesMustNotBeCancelledOnBuildFinish() throws Throwable {
+      story.then(r -> {
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                """
+                        milestone()
+                        semaphore 'wait_a'
+                        if (currentBuild.number == 2) { error 'failure' }
+                        milestone()
+                        semaphore 'wait_b'
+                        """, true));
+        WorkflowRun b1 = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait_a/1", b1);
+        
+        // Let #1 continue until the the second milestone
+        SemaphoreStep.success("wait_a/1", null);
+        SemaphoreStep.waitForStart("wait_b/1", b1);
+
+        WorkflowRun b2 = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("wait_a/2", b2);        
+        
+        // Let #2 continue and error
+        SemaphoreStep.success("wait_a/2", null);
+        r.assertBuildStatus(Result.FAILURE, r.waitForCompletion(b2));
+
+        // Let #1 finish
+        SemaphoreStep.success("wait_b/1", null);
+
+        // Confirm that #1 was not canceled
+        r.assertBuildStatus(Result.SUCCESS, r.waitForCompletion(b1));
+    });
+    }
 }

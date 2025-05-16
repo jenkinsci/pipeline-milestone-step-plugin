@@ -201,7 +201,7 @@ public class MilestoneStepExecution extends SynchronousStepExecution<Void> {
                 LOGGER.finest(() -> "milestones after completion: " + result.milestones());
                 if (result.lastMilestoneBeforeCompletion() != null) {
                     LOGGER.finest(() -> "Build" + r + " last milestone before completion: " + result.lastMilestoneBeforeCompletion());
-                    var buildsToCancel = getBuildsToCancel(r.getNumber(), Integer.MAX_VALUE, result.milestones());
+                    var buildsToCancel = getBuildsToCancel(r.getNumber(), result.lastMilestoneBeforeCompletion() + 1, result.milestones());
                     cancelAll(r.getParent(), buildsToCancel);
                 } else {
                     LOGGER.finest(() -> "Build " + r + " was not using milestones, nothing to cancel");
