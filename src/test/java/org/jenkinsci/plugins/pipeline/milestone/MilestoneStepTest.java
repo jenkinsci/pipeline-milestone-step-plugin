@@ -7,26 +7,27 @@ import org.jenkinsci.plugins.workflow.cps.SnippetizerTester;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.jvnet.hudson.test.BuildWatcher;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.jvnet.hudson.test.Issue;
-import org.jvnet.hudson.test.JenkinsSessionRule;
-import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.LogRecorder;
+import org.jvnet.hudson.test.junit.jupiter.BuildWatcherExtension;
+import org.jvnet.hudson.test.junit.jupiter.JenkinsSessionExtension;
 
-public class MilestoneStepTest {
-    @ClassRule
-    public static BuildWatcher buildWatcher = new BuildWatcher();
+class MilestoneStepTest {
 
-    @Rule
-    public JenkinsSessionRule story = new JenkinsSessionRule();
+    @SuppressWarnings("unused")
+    @RegisterExtension
+    private static final BuildWatcherExtension BUILD_WATCHER = new BuildWatcherExtension();
 
-    @Rule
-    public LoggerRule loggerRule = new LoggerRule().recordPackage(MilestoneStep.class, Level.FINE);
+    @RegisterExtension
+    private final JenkinsSessionExtension story = new JenkinsSessionExtension();
+
+    @SuppressWarnings("unused")
+    private final LogRecorder logRecorder = new LogRecorder().recordPackage(MilestoneStep.class, Level.FINE);
 
     @Test
-    public void buildsMustPassThroughInOrder() throws Throwable {
+    void buildsMustPassThroughInOrder() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -57,7 +58,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void olderBuildsMustBeCancelledOnMilestoneExit() throws Throwable {
+    void olderBuildsMustBeCancelledOnMilestoneExit() throws Throwable {
         story.then(r -> {
                 WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
                 p.setDefinition(new CpsFlowDefinition(
@@ -84,7 +85,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void olderBuildsMustBeCancelledOnBuildFinish() throws Throwable {
+    void olderBuildsMustBeCancelledOnBuildFinish() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -104,13 +105,13 @@ public class MilestoneStepTest {
             SemaphoreStep.success("wait/2", null);
             r.waitForCompletion(b2);
 
-            // Once #2 finishes, so it passes the virtual ad-inifinitum milestone, then #1 is automatically cancelled
+            // Once #2 finishes, so it passes the virtual ad-infinitum milestone, then #1 is automatically cancelled
             r.assertBuildStatus(Result.NOT_BUILT, r.waitForCompletion(b1));
         });
     }
 
     @Test
-    public void olderBuildsMustBeCancelledOnBuildAborted() throws Throwable {
+    void olderBuildsMustBeCancelledOnBuildAborted() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -135,7 +136,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void milestoneNotAllowedInsideParallel() throws Throwable {
+    void milestoneNotAllowedInsideParallel() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -182,7 +183,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void unsafeMilestoneAllowedInsideParallel() throws Throwable {
+    void unsafeMilestoneAllowedInsideParallel() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -228,7 +229,7 @@ public class MilestoneStepTest {
 
     @Issue("JENKINS-38464")
     @Test
-    public void milestoneAllowedOutsideParallel() throws Throwable {
+    void milestoneAllowedOutsideParallel() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -244,7 +245,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void ordinals() throws Throwable {
+    void ordinals() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -271,7 +272,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void configRoundtrip() throws Throwable {
+    void configRoundtrip() throws Throwable {
         story.then(r -> {
             SnippetizerTester t = new SnippetizerTester(r);
             MilestoneStep lacksOrdinal = new MilestoneStep(null);
@@ -293,7 +294,7 @@ public class MilestoneStepTest {
      * Sanity test for {@link MilestoneStepExecution.Listener}.
      */
     @Test
-    public void notUsingMilestone() throws Throwable {
+    void notUsingMilestone() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition("""
@@ -314,7 +315,7 @@ public class MilestoneStepTest {
      * Sanity test for {@link MilestoneStepExecution.FlowExecutionListenerImpl}.
      */
     @Test
-    public void notUsingMilestoneWithResume() throws Throwable {
+    void notUsingMilestoneWithResume() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition("""
@@ -337,7 +338,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void reachSameMilestone() throws Throwable {
+    void reachSameMilestone() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -358,7 +359,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void reloadJobWhileRunning() throws Throwable {
+    void reloadJobWhileRunning() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -390,7 +391,7 @@ public class MilestoneStepTest {
     }
 
     @Test
-    public void buildsMustPassThroughInOrderWithRestart() throws Throwable {
+    void buildsMustPassThroughInOrderWithRestart() throws Throwable {
         story.then(r -> {
             WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
             p.setDefinition(new CpsFlowDefinition(
@@ -426,7 +427,7 @@ public class MilestoneStepTest {
 
     @Issue("JENKINS-75668")
     @Test
-    public void olderBuildsAtLaterMilestonesMustNotBeCancelledOnBuildFinish() throws Throwable {
+    void olderBuildsAtLaterMilestonesMustNotBeCancelledOnBuildFinish() throws Throwable {
       story.then(r -> {
         WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
